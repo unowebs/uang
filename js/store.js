@@ -111,8 +111,6 @@ async function fetchCloudUsers() {
 
 async function saveUserToCloud(user) {
   try {
-    // ?on_conflict=email → tells Supabase which column to use for ON CONFLICT
-    // Prefer: resolution=merge-duplicates → INSERT ... ON CONFLICT(email) DO UPDATE SET ...
     const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=email`, {
       method: 'POST',
       headers: {
@@ -131,12 +129,136 @@ async function saveUserToCloud(user) {
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.error('[Supabase] upsert failed:', res.status, errText);
-    } else {
-      console.log('[Supabase] user synced:', user.email);
+      console.error('[Supabase] upsert user failed:', res.status, errText);
     }
   } catch (e) {
     console.warn('[Supabase] network error:', e.message);
+  }
+}
+
+// Room Cloud Sync Helpers
+async function fetchCloudRooms() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rooms?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.map(r => ({
+        code: r.code,
+        name: r.name,
+        hostEmail: r.host_email,
+        members: [r.host_email]
+      }));
+    }
+  } catch (e) {
+    console.warn('Supabase fetch rooms error:', e);
+  }
+  return [];
+}
+
+async function saveRoomToCloud(room) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rooms?on_conflict=code`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        code: room.code,
+        name: room.name,
+        host_email: room.hostEmail
+      })
+    });
+    if (!res.ok) {
+      console.error('[Supabase] save room failed:', res.status, await res.text());
+    }
+  } catch (e) {
+    console.warn('Could not sync room to Supabase:', e);
+  }
+}
+
+// Transaction Cloud Sync Helpers
+async function fetchCloudTransactions() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.map(t => ({
+        id: t.id,
+        userEmail: t.user_email,
+        title: t.title,
+        amount: parseFloat(t.amount) || 0,
+        currency: t.currency || 'IDR',
+        type: t.type || 'expense',
+        categoryId: t.category_id,
+        datetime: t.datetime,
+        note: t.note || '',
+        roomCode: t.room_code || null
+      }));
+    }
+  } catch (e) {
+    console.warn('Supabase fetch transactions error:', e);
+  }
+  return [];
+}
+
+async function saveTransactionToCloud(tx) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?on_conflict=id`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        id: tx.id,
+        user_email: tx.userEmail,
+        title: tx.title,
+        amount: tx.amount,
+        currency: tx.currency || 'IDR',
+        type: tx.type || 'expense',
+        category_id: tx.categoryId,
+        datetime: tx.datetime,
+        note: tx.note || '',
+        room_code: tx.roomCode || null
+      })
+    });
+    if (!res.ok) {
+      console.error('[Supabase] save tx failed:', res.status, await res.text());
+    }
+  } catch (e) {
+    console.warn('Could not sync tx to Supabase:', e);
+  }
+}
+
+async function deleteTransactionFromCloud(id) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (!res.ok) {
+      console.error('[Supabase] delete tx failed:', res.status, await res.text());
+    }
+  } catch (e) {
+    console.warn('Could not delete tx from Supabase:', e);
   }
 }
 
@@ -153,6 +275,8 @@ class Store {
 
     // Initial background sync from cloud for multi-browser support
     this.syncUsersFromCloud();
+    this.syncRoomsFromCloud();
+    this.syncTransactionsFromCloud();
   }
 
   async syncUsersFromCloud() {
@@ -175,6 +299,36 @@ class Store {
           this.saveCurrentUser();
         }
       }
+    }
+  }
+
+  async syncRoomsFromCloud() {
+    const cloudRooms = await fetchCloudRooms();
+    if (cloudRooms && cloudRooms.length > 0) {
+      cloudRooms.forEach(cr => {
+        const idx = this.rooms.findIndex(r => r.code === cr.code);
+        if (idx !== -1) {
+          this.rooms[idx] = { ...this.rooms[idx], ...cr };
+        } else {
+          this.rooms.push(cr);
+        }
+      });
+      localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(this.rooms));
+    }
+  }
+
+  async syncTransactionsFromCloud() {
+    const cloudTxs = await fetchCloudTransactions();
+    if (cloudTxs && cloudTxs.length > 0) {
+      cloudTxs.forEach(ctx => {
+        const idx = this.transactions.findIndex(t => t.id === ctx.id);
+        if (idx !== -1) {
+          this.transactions[idx] = { ...this.transactions[idx], ...ctx };
+        } else {
+          this.transactions.push(ctx);
+        }
+      });
+      this.saveTransactions();
     }
   }
 
@@ -369,8 +523,10 @@ class Store {
     return localStorage.getItem(STORAGE_KEYS.ACTIVE_ROOM) || null;
   }
 
-  createRoom(roomCode, roomName) {
+  async createRoom(roomCode, roomName) {
     const cleanCode = roomCode.toUpperCase().trim();
+    await this.syncRoomsFromCloud();
+
     const existing = this.rooms.find(r => r.code === cleanCode);
     if (existing) {
       throw new Error('Kode Room sudah digunakan. Buat kode lain.');
@@ -384,13 +540,20 @@ class Store {
     this.rooms.push(newRoom);
     localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(this.rooms));
 
+    // Sync to Supabase Cloud so anyone on another device can join
+    await saveRoomToCloud(newRoom);
+
     this.activeRoom = cleanCode;
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROOM, cleanCode);
     return newRoom;
   }
 
-  joinRoom(roomCode) {
+  async joinRoom(roomCode) {
     const cleanCode = roomCode.toUpperCase().trim();
+    
+    // Sync rooms from cloud so rooms created on another device are fetched!
+    await this.syncRoomsFromCloud();
+
     const room = this.rooms.find(r => r.code === cleanCode);
     if (!room) {
       throw new Error(`Room dengan kode "${cleanCode}" tidak ditemukan.`);
@@ -404,6 +567,10 @@ class Store {
 
     this.activeRoom = cleanCode;
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROOM, cleanCode);
+
+    // Sync transactions for this room from cloud
+    await this.syncTransactionsFromCloud();
+
     return room;
   }
 
@@ -448,7 +615,7 @@ class Store {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(this.transactions));
   }
 
-  addTransaction(tx) {
+  async addTransaction(tx) {
     const newTx = {
       id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       userEmail: this.currentUser ? this.currentUser.email : 'demo@fintrack.id',
@@ -463,12 +630,43 @@ class Store {
     };
     this.transactions.unshift(newTx);
     this.saveTransactions();
+
+    // Sync to Supabase Cloud
+    await saveTransactionToCloud(newTx);
+
     return newTx;
   }
 
-  deleteTransaction(id) {
+  async updateTransaction(id, txData) {
+    const index = this.transactions.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Transaksi tidak ditemukan.');
+
+    const updatedTx = {
+      ...this.transactions[index],
+      title: txData.title !== undefined ? txData.title : this.transactions[index].title,
+      amount: txData.amount !== undefined ? parseFloat(txData.amount) : this.transactions[index].amount,
+      currency: txData.currency || this.transactions[index].currency || 'IDR',
+      type: txData.type || this.transactions[index].type,
+      categoryId: txData.categoryId || this.transactions[index].categoryId,
+      datetime: txData.datetime ? new Date(txData.datetime).toISOString() : this.transactions[index].datetime,
+      note: txData.note !== undefined ? txData.note : this.transactions[index].note
+    };
+
+    this.transactions[index] = updatedTx;
+    this.saveTransactions();
+
+    // Sync to Supabase Cloud
+    await saveTransactionToCloud(updatedTx);
+
+    return updatedTx;
+  }
+
+  async deleteTransaction(id) {
     this.transactions = this.transactions.filter(t => t.id !== id);
     this.saveTransactions();
+
+    // Delete from Supabase Cloud
+    await deleteTransactionFromCloud(id);
   }
 
   addCategory(cat) {

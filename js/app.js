@@ -450,8 +450,11 @@ function renderTxTable(txs) {
         <td style="text-align:right">
           <span class="amount ${isIn ? 'in' : 'out'}">${isIn ? '+' : '-'} ${formatMoney(tx.amount, tx.currency || 'IDR')}</span>
         </td>
-        <td style="text-align:right">
-          <button class="icon-btn btn-del-tx" data-id="${tx.id}" title="Hapus">
+        <td style="text-align:right;white-space:nowrap">
+          <button class="icon-btn btn-edit-tx" data-id="${tx.id}" title="Edit Transaksi" style="color:var(--primary);margin-right:4px;">
+            <i data-lucide="edit-3" style="width:14px;height:14px"></i>
+          </button>
+          <button class="icon-btn btn-del-tx" data-id="${tx.id}" title="Hapus Transaksi" style="color:var(--red)">
             <i data-lucide="trash-2" style="width:14px;height:14px"></i>
           </button>
         </td>
@@ -505,7 +508,17 @@ function bindEvents() {
   document.getElementById('btnRegister')?.addEventListener('click', () => openModal('modalRegister'));
   document.getElementById('landingLogin')?.addEventListener('click',    () => openModal('modalLogin'));
   document.getElementById('landingRegister')?.addEventListener('click', () => openModal('modalRegister'));
-  document.getElementById('btnNewTx')?.addEventListener('click',   () => openModal('modalTx'));
+  document.getElementById('btnNewTx')?.addEventListener('click', () => {
+    document.getElementById('editTxId').value = '';
+    document.getElementById('txForm').reset();
+    document.getElementById('txAmount').value = '';
+    const titleEl = document.getElementById('txModalTitle');
+    const submitEl = document.getElementById('txSubmit');
+    if (titleEl) titleEl.innerHTML = '<i data-lucide="plus-circle" style="color:var(--primary)"></i> Catat Transaksi';
+    if (submitEl) submitEl.textContent = 'Simpan ✓';
+    updateTxForm('expense');
+    openModal('modalTx');
+  });
   document.getElementById('btnNewCat')?.addEventListener('click',  () => openModal('modalCat'));
   document.getElementById('btnAddCatQ')?.addEventListener('click', () => openModal('modalCat'));
   document.getElementById('btnCreateRoom')?.addEventListener('click', () => openModal('modalCreateRoom'));
@@ -773,9 +786,11 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     if (amtL) amtL.textContent = isIncome ? `💵 Jumlah Pemasukan (${symbol})` : `💸 Jumlah Pengeluaran (${symbol})`;
   });
 
-  // ── Tx form submit ──
-  document.getElementById('txForm')?.addEventListener('submit', e => {
+  // ── Tx form submit (Tambah & Edit) ──
+  document.getElementById('txForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn = e.currentTarget.querySelector('[type="submit"]');
+    const editId = document.getElementById('editTxId').value;
     const type     = document.querySelector('input[name="txType"]:checked').value;
     const title    = document.getElementById('txTitle').value.trim();
     const formattedAmount = document.getElementById('txAmount').value;
@@ -792,31 +807,52 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     }
 
     let enrichedNote = note;
-    if (type === 'income' && source)    enrichedNote = source + (note ? ` • ${note}` : '');
-    if (type === 'expense' && merchant) enrichedNote = merchant + (note ? ` • ${note}` : '');
+    if (type === 'income' && source && !note.includes(source))    enrichedNote = source + (note ? ` • ${note}` : '');
+    if (type === 'expense' && merchant && !note.includes(merchant)) enrichedNote = merchant + (note ? ` • ${note}` : '');
 
-    store.addTransaction({
-      title,
-      amount,
-      currency,
-      categoryId: catId,
-      datetime,
-      note: enrichedNote,
-      type
-    });
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
 
-    closeModal('modalTx');
-    document.getElementById('txForm').reset();
-    document.getElementById('txAmount').value = '';
-    updateTxForm('expense');
-    refresh();
+    try {
+      if (editId) {
+        await store.updateTransaction(editId, {
+          title,
+          amount,
+          currency,
+          categoryId: catId,
+          datetime,
+          note: enrichedNote,
+          type
+        });
+        toast(`Transaksi "${title}" berhasil diperbarui! ✏️`, '✨');
+      } else {
+        await store.addTransaction({
+          title,
+          amount,
+          currency,
+          categoryId: catId,
+          datetime,
+          note: enrichedNote,
+          type
+        });
+        celebrate(type);
+        const moneyStr = formatMoney(amount, currency);
+        const msg = type === 'income'
+          ? `💰 ${title} (${moneyStr}) — Yeay, selamat kamu kaya!`
+          : `😅 ${title} (${moneyStr}) — tercatat sebagai pengeluaran!`;
+        toast(msg, type === 'income' ? '🤑' : '😢', type === 'income' ? 't-income' : 't-expense');
+      }
 
-    celebrate(type);
-    const moneyStr = formatMoney(amount, currency);
-    const msg = type === 'income'
-      ? `💰 ${title} (${moneyStr}) — Yeay, selamat kamu kaya!`
-      : `😅 ${title} (${moneyStr}) — tercatat sebagai pengeluaran!`;
-    toast(msg, type === 'income' ? '🤑' : '😢', type === 'income' ? 't-income' : 't-expense');
+      closeModal('modalTx');
+      document.getElementById('txForm').reset();
+      document.getElementById('editTxId').value = '';
+      document.getElementById('txAmount').value = '';
+      updateTxForm('expense');
+      refresh();
+    } catch (err) {
+      alert(err.message || 'Gagal menyimpan transaksi.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = editId ? 'Simpan Perubahan ✓' : 'Simpan ✓'; }
+    }
   });
 
   // ── Category form submit ──
@@ -845,30 +881,42 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   });
 
   // ── Room: create ──
-  document.getElementById('createRoomForm')?.addEventListener('submit', e => {
+  document.getElementById('createRoomForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn  = e.currentTarget.querySelector('[type="submit"]');
     const name = document.getElementById('roomName').value.trim();
     const code = document.getElementById('roomCode').value.trim();
+    if (btn) { btn.disabled = true; btn.textContent = 'Membuat…'; }
     try {
-      store.createRoom(code, name);
+      await store.createRoom(code, name);
       closeModal('modalCreateRoom');
       document.getElementById('createRoomForm').reset();
       refresh();
-      toast(`Room "${name}" [${code.toUpperCase()}] dibuat!`, '🏠');
-    } catch (err) { alert(err.message); }
+      toast(`Room "${name}" [${code.toUpperCase()}] dibuat! 🏠`, '🏠');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Buat Room'; }
+    }
   });
 
   // ── Room: join ──
-  document.getElementById('joinRoomForm')?.addEventListener('submit', e => {
+  document.getElementById('joinRoomForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn  = e.currentTarget.querySelector('[type="submit"]');
     const code = document.getElementById('joinCode').value.trim();
+    if (btn) { btn.disabled = true; btn.textContent = 'Mencari Room…'; }
     try {
-      const room = store.joinRoom(code);
+      const room = await store.joinRoom(code);
       closeModal('modalJoinRoom');
       document.getElementById('joinRoomForm').reset();
       refresh();
-      toast(`Bergabung ke Room: ${room.name}`, '🚀');
-    } catch (err) { alert(err.message); }
+      toast(`Bergabung ke Room: ${room.name} 🚀`, '🚀');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Gabung'; }
+    }
   });
 
   // ── Room: leave ──
@@ -946,14 +994,58 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   document.getElementById('filterCat')?.addEventListener('change',  e => { state.catFilter  = e.target.value; refresh(); });
   document.getElementById('filterType')?.addEventListener('change', e => { state.typeFilter = e.target.value; refresh(); });
 
-  // ── Delete tx ──
-  document.getElementById('txBody')?.addEventListener('click', e => {
-    const btn = e.target.closest('.btn-del-tx');
-    if (!btn) return;
-    if (confirm('Hapus transaksi ini?')) {
-      store.deleteTransaction(btn.dataset.id);
-      refresh();
-      toast('Transaksi dihapus.', '🗑️');
+  // ── Edit & Delete Tx ──
+  document.getElementById('txBody')?.addEventListener('click', async e => {
+    // Edit button
+    const editBtn = e.target.closest('.btn-edit-tx');
+    if (editBtn) {
+      const id = editBtn.dataset.id;
+      const tx = store.transactions.find(t => t.id === id);
+      if (!tx) return;
+
+      document.getElementById('editTxId').value = tx.id;
+      document.getElementById('txTitle').value = tx.title;
+      document.getElementById('txAmount').value = formatNumberWithDots(tx.amount);
+      if (document.getElementById('txCurrency')) {
+        document.getElementById('txCurrency').value = tx.currency || 'IDR';
+      }
+
+      // Type radio
+      const isIncome = tx.type === 'income';
+      const radInc = document.getElementById('typeIn');
+      const radExp = document.getElementById('typeOut');
+      if (isIncome && radInc) radInc.checked = true;
+      if (!isIncome && radExp) radExp.checked = true;
+      updateTxForm(tx.type);
+
+      if (document.getElementById('txCat')) {
+        document.getElementById('txCat').value = tx.categoryId;
+      }
+      if (document.getElementById('txDatetime')) {
+        const dt = new Date(tx.datetime);
+        document.getElementById('txDatetime').value = getCurrentDateTimeLocalString(dt);
+      }
+      if (document.getElementById('txNote')) {
+        document.getElementById('txNote').value = tx.note || '';
+      }
+
+      const titleEl = document.getElementById('txModalTitle');
+      const submitEl = document.getElementById('txSubmit');
+      if (titleEl) titleEl.innerHTML = '<i data-lucide="edit-3" style="color:var(--primary)"></i> Edit Transaksi';
+      if (submitEl) submitEl.textContent = 'Simpan Perubahan ✓';
+
+      openModal('modalTx');
+      return;
+    }
+
+    // Delete button
+    const delBtn = e.target.closest('.btn-del-tx');
+    if (delBtn) {
+      if (confirm('Hapus transaksi ini?')) {
+        await store.deleteTransaction(delBtn.dataset.id);
+        refresh();
+        toast('Transaksi dihapus.', '🗑️');
+      }
     }
   });
 
