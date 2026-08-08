@@ -57,249 +57,304 @@
       </div>
     </header>
 
-    <!-- Room Collaboration Banner (Fitur Kode Room) -->
-    <section class="room-bar">
-      <div class="room-info">
-        <i data-lucide="users" style="color: var(--primary);"></i>
-        <span>Konteks Keuangan:</span>
-        <span id="activeRoomBadge" class="room-badge">Keuangan Pribadi</span>
-      </div>
-
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button id="btnOpenCreateRoomModal" class="btn btn-secondary btn-sm">
-          <i data-lucide="plus-square"></i> Buat Kode Room
-        </button>
-        <button id="btnOpenJoinRoomModal" class="btn btn-secondary btn-sm">
-          <i data-lucide="log-in"></i> Gabung Room
-        </button>
-        <button id="btnLeaveRoom" class="btn btn-secondary btn-sm" style="display: none; color: var(--expense);">
-          <i data-lucide="log-out"></i> Keluar Room
-        </button>
-      </div>
-    </section>
-
-    <!-- Timeframe Selection Bar -->
-    <section class="timeframe-bar">
-      <div class="timeframe-tabs">
-        <button class="time-tab" data-timeframe="daily">Hari Ini</button>
-        <button class="time-tab" data-timeframe="weekly">Minggu Ini</button>
-        <button class="time-tab active" data-timeframe="monthly">Bulan Ini</button>
-        <button class="time-tab" data-timeframe="yearly">Tahun Ini</button>
-        <button class="time-tab" data-timeframe="all">Semua</button>
-        <button class="time-tab" data-timeframe="custom">Kustom Date</button>
-      </div>
-
-      <div id="customDateRangeContainer" class="custom-date-range hidden" style="display: none;">
-        <input type="date" id="startDateInput" aria-label="Tanggal Mulai">
-        <span style="color: var(--text-dim); font-size: 13px;">s/d</span>
-        <input type="date" id="endDateInput" aria-label="Tanggal Akhir">
-        <button id="btnApplyCustomDate" class="btn btn-primary btn-sm">Terapkan</button>
-      </div>
-
-      <div id="activePeriodLabel" class="active-period-badge">
-        Periode: Bulan Ini
-      </div>
-    </section>
-
-    <!-- Overview Metrics Grid -->
-    <section class="metrics-grid">
-      <div class="metric-card net">
-        <div class="metric-header">
-          <span class="metric-title">Saldo Bersih</span>
-          <div class="metric-icon"><i data-lucide="scale"></i></div>
+    <!-- LANDING PAGE VIEW (Shown on initial visit before logging in / entering app) -->
+    <div id="landingView" class="landing-section">
+      <div class="landing-hero">
+        <div class="landing-hero-badge">
+          <i data-lucide="sparkles"></i> Platform Manajemen Keuangan Elegan & Kolaboratif
         </div>
-        <div id="metricNetBalance" class="metric-value">Rp 0</div>
-        <div class="metric-subtitle">Selisih Pemasukan & Pengeluaran</div>
-      </div>
+        <h1 class="landing-title">Selamat Datang di FinTrack ID</h1>
+        <p class="landing-subtitle">
+          Kelola arus kas harian, bulanan, dan tahunan Anda dengan mudah. Nikmati fitur kolaborasi Kode Room real-time, kustomisasi grafik dengan foto kustom, rekapan spreadsheet interaktif, dan ekspor laporan PDF resmi.
+        </p>
 
-      <div class="metric-card income">
-        <div class="metric-header">
-          <span class="metric-title">Total Pemasukan</span>
-          <div class="metric-icon"><i data-lucide="trending-up"></i></div>
+        <div class="landing-cta-buttons">
+          <button id="landingBtnLogin" class="btn btn-secondary btn-lg">
+            <i data-lucide="log-in"></i> Masuk (Login)
+          </button>
+          <button id="landingBtnRegister" class="btn btn-primary btn-lg">
+            <i data-lucide="user-plus"></i> Daftar Akun Gratis
+          </button>
+          <button id="landingBtnEnterApp" class="btn btn-secondary btn-lg" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc;">
+            <i data-lucide="arrow-right-circle"></i> Masuk ke Dashboard
+          </button>
         </div>
-        <div id="metricTotalIncome" class="metric-value">Rp 0</div>
-        <div class="metric-subtitle">Total pemasukan periode ini</div>
       </div>
 
-      <div class="metric-card expense">
-        <div class="metric-header">
-          <span class="metric-title">Total Pengeluaran</span>
-          <div class="metric-icon"><i data-lucide="trending-down"></i></div>
+      <!-- Landing Features Grid -->
+      <div class="landing-features-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><i data-lucide="calendar"></i></div>
+          <h3>Manajemen Fleksibel</h3>
+          <p>Filter transaksi harian, bulanan, tahunan, atau kustom rentang tanggal secara instan.</p>
         </div>
-        <div id="metricTotalExpense" class="metric-value">Rp 0</div>
-        <div class="metric-subtitle">Total pengeluaran periode ini</div>
-      </div>
 
-      <div class="metric-card average">
-        <div class="metric-header">
-          <span class="metric-title">Rata-rata Pengeluaran</span>
-          <div class="metric-icon"><i data-lucide="bar-chart-2"></i></div>
+        <div class="feature-card">
+          <div class="feature-icon"><i data-lucide="users"></i></div>
+          <h3>Kolaborasi Kode Room</h3>
+          <p>Buat kode room dan undang kerabat untuk memantau aktivitas keuangan bersama secara real-time.</p>
         </div>
-        <div id="metricDailyAvg" class="metric-value">Rp 0</div>
-        <div class="metric-subtitle">Per hari aktif dalam periode</div>
-      </div>
-    </section>
 
-    <!-- Visual Dashboard Analytics with Custom Chart Selector & Photo Upload -->
-    <section class="dashboard-grid">
-      <div class="card">
+        <div class="feature-card">
+          <div class="feature-icon"><i data-lucide="pie-chart"></i></div>
+          <h3>Grafik & Foto Kustom</h3>
+          <p>Pilih tipe grafik (Pie, Bar, Line, Radar) dan unggah foto lokal sebagai tekstur grafik.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i data-lucide="file-spreadsheet"></i></div>
+          <h3>Spreadsheet & Laporan PDF</h3>
+          <p>Hasilkan rekapan tabel spreadsheet interaktif dan unduh laporan PDF resmi dalam 1 klik.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD VIEW (Shown when logged in or after entering app) -->
+    <div id="mainDashboardView" class="main-dashboard-section" style="display: none;">
+      <!-- Room Collaboration Banner (Fitur Kode Room) -->
+      <section class="room-bar">
+        <div class="room-info">
+          <i data-lucide="users" style="color: var(--primary);"></i>
+          <span>Konteks Keuangan:</span>
+          <span id="activeRoomBadge" class="room-badge">Keuangan Pribadi</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button id="btnOpenCreateRoomModal" class="btn btn-secondary btn-sm">
+            <i data-lucide="plus-square"></i> Buat Kode Room
+          </button>
+          <button id="btnOpenJoinRoomModal" class="btn btn-secondary btn-sm">
+            <i data-lucide="log-in"></i> Gabung Room
+          </button>
+          <button id="btnLeaveRoom" class="btn btn-secondary btn-sm" style="display: none; color: var(--expense);">
+            <i data-lucide="log-out"></i> Keluar Room
+          </button>
+        </div>
+      </section>
+
+      <!-- Timeframe Selection Bar -->
+      <section class="timeframe-bar">
+        <div class="timeframe-tabs">
+          <button class="time-tab" data-timeframe="daily">Hari Ini</button>
+          <button class="time-tab" data-timeframe="weekly">Minggu Ini</button>
+          <button class="time-tab active" data-timeframe="monthly">Bulan Ini</button>
+          <button class="time-tab" data-timeframe="yearly">Tahun Ini</button>
+          <button class="time-tab" data-timeframe="all">Semua</button>
+          <button class="time-tab" data-timeframe="custom">Kustom Date</button>
+        </div>
+
+        <div id="customDateRangeContainer" class="custom-date-range hidden" style="display: none;">
+          <input type="date" id="startDateInput" aria-label="Tanggal Mulai">
+          <span style="color: var(--text-dim); font-size: 13px;">s/d</span>
+          <input type="date" id="endDateInput" aria-label="Tanggal Akhir">
+          <button id="btnApplyCustomDate" class="btn btn-primary btn-sm">Terapkan</button>
+        </div>
+
+        <div id="activePeriodLabel" class="active-period-badge">
+          Periode: Bulan Ini
+        </div>
+      </section>
+
+      <!-- Overview Metrics Grid -->
+      <section class="metrics-grid">
+        <div class="metric-card net">
+          <div class="metric-header">
+            <span class="metric-title">Saldo Bersih</span>
+            <div class="metric-icon"><i data-lucide="scale"></i></div>
+          </div>
+          <div id="metricNetBalance" class="metric-value">Rp 0</div>
+          <div class="metric-subtitle">Selisih Pemasukan & Pengeluaran</div>
+        </div>
+
+        <div class="metric-card income">
+          <div class="metric-header">
+            <span class="metric-title">Total Pemasukan</span>
+            <div class="metric-icon"><i data-lucide="trending-up"></i></div>
+          </div>
+          <div id="metricTotalIncome" class="metric-value">Rp 0</div>
+          <div class="metric-subtitle">Total pemasukan periode ini</div>
+        </div>
+
+        <div class="metric-card expense">
+          <div class="metric-header">
+            <span class="metric-title">Total Pengeluaran</span>
+            <div class="metric-icon"><i data-lucide="trending-down"></i></div>
+          </div>
+          <div id="metricTotalExpense" class="metric-value">Rp 0</div>
+          <div class="metric-subtitle">Total pengeluaran periode ini</div>
+        </div>
+
+        <div class="metric-card average">
+          <div class="metric-header">
+            <span class="metric-title">Rata-rata Pengeluaran</span>
+            <div class="metric-icon"><i data-lucide="bar-chart-2"></i></div>
+          </div>
+          <div id="metricDailyAvg" class="metric-value">Rp 0</div>
+          <div class="metric-subtitle">Per hari aktif dalam periode</div>
+        </div>
+      </section>
+
+      <!-- Visual Dashboard Analytics with Custom Chart Selector & Photo Upload -->
+      <section class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><i data-lucide="pie-chart"></i> Visualisasi Grafik Keuangan</h2>
+            <div class="chart-tab-toggles" style="display: flex; gap: 6px;">
+              <button id="tabBtnDonut" class="btn btn-secondary btn-sm active" style="padding: 4px 10px; font-size: 11px;">Kategori</button>
+              <button id="tabBtnTrend" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px;">Tren</button>
+            </div>
+          </div>
+
+          <!-- Custom Chart Options & Image Uploader -->
+          <div class="chart-customizer-bar">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
+              <i data-lucide="settings-2" style="width: 14px; height: 14px;"></i>
+              <span>Tipe Grafik:</span>
+              <select id="chartTypeSelect" class="filter-select" style="padding: 4px 10px; font-size: 12px;">
+                <option value="doughnut">Pie / Donut</option>
+                <option value="bar">Batang (Bar)</option>
+                <option value="line">Garis (Line)</option>
+                <option value="scatter">Titik / Point</option>
+                <option value="radar">Radar</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-left: auto;">
+              <label for="chartImageUpload" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; cursor: pointer;">
+                <i data-lucide="image"></i> Custom Foto Grafik
+              </label>
+              <input type="file" id="chartImageUpload" accept="image/*" style="display: none;">
+              <button id="btnResetChartImage" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; display: none;" title="Reset Foto">
+                &times; Reset Foto
+              </button>
+            </div>
+          </div>
+
+          <div id="donutChartContainer" class="chart-wrapper">
+            <canvas id="categoryChartCanvas"></canvas>
+            <div id="noCategoryDataMsg" class="empty-state" style="display: none; height: 100%; justify-content: center; flex-direction: column; align-items: center;">
+              <i data-lucide="inbox"></i>
+              <p>Belum ada data pengeluaran pada periode ini.</p>
+            </div>
+          </div>
+
+          <div id="trendChartContainer" class="chart-wrapper" style="display: none;">
+            <canvas id="trendChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Right Column: Budget Limits -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><i data-lucide="target"></i> Batas Anggaran Kategori</h2>
+            <button id="btnAddCategoryQuick" class="btn btn-secondary btn-sm" style="font-size: 11px;">+ Tambah</button>
+          </div>
+
+          <div id="budgetListContainer" class="budget-list">
+            <!-- Dynamic budget items -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: Rekapan Data Keuangan & Interactive Spreadsheet & PDF Download -->
+      <section class="card" style="margin-bottom: 28px;">
         <div class="card-header">
-          <h2 class="card-title"><i data-lucide="pie-chart"></i> Visualisasi Grafik Keuangan</h2>
-          <div class="chart-tab-toggles" style="display: flex; gap: 6px;">
-            <button id="tabBtnDonut" class="btn btn-secondary btn-sm active" style="padding: 4px 10px; font-size: 11px;">Kategori</button>
-            <button id="tabBtnTrend" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px;">Tren</button>
-          </div>
+          <h2 class="card-title"><i data-lucide="file-spreadsheet"></i> Rekapan Keuangan & Export Spreadsheet / PDF</h2>
         </div>
 
-        <!-- Custom Chart Options & Image Uploader -->
-        <div class="chart-customizer-bar">
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
-            <i data-lucide="settings-2" style="width: 14px; height: 14px;"></i>
-            <span>Tipe Grafik:</span>
-            <select id="chartTypeSelect" class="filter-select" style="padding: 4px 10px; font-size: 12px;">
-              <option value="doughnut">Pie / Donut</option>
-              <option value="bar">Batang (Bar)</option>
-              <option value="line">Garis (Line)</option>
-              <option value="scatter">Titik / Point</option>
-              <option value="radar">Radar</option>
-            </select>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 13px; color: var(--text-muted);">Dari Tanggal:</label>
+            <input type="date" id="recapStartDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
           </div>
 
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-left: auto;">
-            <label for="chartImageUpload" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; cursor: pointer;">
-              <i data-lucide="image"></i> Custom Foto Grafik
-            </label>
-            <input type="file" id="chartImageUpload" accept="image/*" style="display: none;">
-            <button id="btnResetChartImage" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; display: none;" title="Reset Foto">
-              &times; Reset Foto
-            </button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 13px; color: var(--text-muted);">Sampai Tanggal:</label>
+            <input type="date" id="recapEndDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
           </div>
+
+          <button id="btnGenerateRecap" class="btn btn-primary btn-sm">
+            <i data-lucide="table"></i> Tampilkan Rekap Spreadsheet
+          </button>
+
+          <button id="btnDownloadPDF" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+            <i data-lucide="file-text"></i> Simpan / Download PDF
+          </button>
+
+          <button id="btnExportCSVRecap" class="btn btn-secondary btn-sm">
+            <i data-lucide="download"></i> Download Excel / CSV
+          </button>
         </div>
 
-        <div id="donutChartContainer" class="chart-wrapper">
-          <canvas id="categoryChartCanvas"></canvas>
-          <div id="noCategoryDataMsg" class="empty-state" style="display: none; height: 100%; justify-content: center; flex-direction: column; align-items: center;">
-            <i data-lucide="inbox"></i>
-            <p>Belum ada data pengeluaran pada periode ini.</p>
-          </div>
+        <!-- Interactive Spreadsheet Grid View -->
+        <div class="spreadsheet-container">
+          <table class="spreadsheet-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>Tanggal & Jam</th>
+                <th>Keterangan / Transaksi</th>
+                <th>Kategori</th>
+                <th>Jenis</th>
+                <th style="text-align: right;">Jumlah (Rp)</th>
+              </tr>
+            </thead>
+            <tbody id="spreadsheetBody">
+              <!-- Dynamic Spreadsheet Content -->
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        <div id="trendChartContainer" class="chart-wrapper" style="display: none;">
-          <canvas id="trendChartCanvas"></canvas>
-        </div>
-      </div>
-
-      <!-- Right Column: Budget Limits -->
-      <div class="card">
+      <!-- Transaction History Table -->
+      <section class="card transactions-card">
         <div class="card-header">
-          <h2 class="card-title"><i data-lucide="target"></i> Batas Anggaran Kategori</h2>
-          <button id="btnAddCategoryQuick" class="btn btn-secondary btn-sm" style="font-size: 11px;">+ Tambah</button>
+          <h2 class="card-title"><i data-lucide="receipt"></i> Riwayat & Catatan Transaksi</h2>
+          <div id="txCountBadge" style="font-size: 12px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: var(--radius-full);">
+            0 Transaksi
+          </div>
         </div>
 
-        <div id="budgetListContainer" class="budget-list">
-          <!-- Dynamic budget items -->
-        </div>
-      </div>
-    </section>
+        <div class="table-controls">
+          <div class="search-input-wrap">
+            <i data-lucide="search"></i>
+            <input type="text" id="searchInput" placeholder="Cari transaksi (contoh: Nasi Goreng, Bensin...)" aria-label="Cari transaksi">
+          </div>
 
-    <!-- SECTION: Rekapan Data Keuangan & Interactive Spreadsheet & PDF Download -->
-    <section class="card" style="margin-bottom: 28px;">
-      <div class="card-header">
-        <h2 class="card-title"><i data-lucide="file-spreadsheet"></i> Rekapan Keuangan & Export Spreadsheet / PDF</h2>
-      </div>
+          <select id="categoryFilterSelect" class="filter-select" aria-label="Filter Kategori">
+            <option value="all">Semua Kategori</option>
+          </select>
 
-      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <label style="font-size: 13px; color: var(--text-muted);">Dari Tanggal:</label>
-          <input type="date" id="recapStartDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <label style="font-size: 13px; color: var(--text-muted);">Sampai Tanggal:</label>
-          <input type="date" id="recapEndDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
+          <select id="typeFilterSelect" class="filter-select" aria-label="Filter Jenis Transaksi">
+            <option value="all">Semua Jenis</option>
+            <option value="income">Pemasukan</option>
+            <option value="expense">Pengeluaran</option>
+          </select>
         </div>
 
-        <button id="btnGenerateRecap" class="btn btn-primary btn-sm">
-          <i data-lucide="table"></i> Tampilkan Rekap Spreadsheet
-        </button>
-
-        <button id="btnDownloadPDF" class="btn btn-secondary btn-sm" style="margin-left: auto;">
-          <i data-lucide="file-text"></i> Simpan / Download PDF
-        </button>
-
-        <button id="btnExportCSVRecap" class="btn btn-secondary btn-sm">
-          <i data-lucide="download"></i> Download Excel / CSV
-        </button>
-      </div>
-
-      <!-- Interactive Spreadsheet Grid View -->
-      <div class="spreadsheet-container">
-        <table class="spreadsheet-table">
-          <thead>
-            <tr>
-              <th style="width: 40px;">#</th>
-              <th>Tanggal & Jam</th>
-              <th>Keterangan / Transaksi</th>
-              <th>Kategori</th>
-              <th>Jenis</th>
-              <th style="text-align: right;">Jumlah (Rp)</th>
-            </tr>
-          </thead>
-          <tbody id="spreadsheetBody">
-            <!-- Dynamic Spreadsheet Content -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Transaction History Table -->
-    <section class="card transactions-card">
-      <div class="card-header">
-        <h2 class="card-title"><i data-lucide="receipt"></i> Riwayat & Catatan Transaksi</h2>
-        <div id="txCountBadge" style="font-size: 12px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: var(--radius-full);">
-          0 Transaksi
-        </div>
-      </div>
-
-      <div class="table-controls">
-        <div class="search-input-wrap">
-          <i data-lucide="search"></i>
-          <input type="text" id="searchInput" placeholder="Cari transaksi (contoh: Nasi Goreng, Bensin...)" aria-label="Cari transaksi">
+        <div class="table-responsive">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>Transaksi / Keterangan</th>
+                <th>Kategori</th>
+                <th>Tanggal & Jam (Editable)</th>
+                <th>Jumlah (Rp)</th>
+                <th style="text-align: right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="txTableBody">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
         </div>
 
-        <select id="categoryFilterSelect" class="filter-select" aria-label="Filter Kategori">
-          <option value="all">Semua Kategori</option>
-        </select>
-
-        <select id="typeFilterSelect" class="filter-select" aria-label="Filter Jenis Transaksi">
-          <option value="all">Semua Jenis</option>
-          <option value="income">Pemasukan</option>
-          <option value="expense">Pengeluaran</option>
-        </select>
-      </div>
-
-      <div class="table-responsive">
-        <table class="tx-table">
-          <thead>
-            <tr>
-              <th>Transaksi / Keterangan</th>
-              <th>Kategori</th>
-              <th>Tanggal & Jam (Editable)</th>
-              <th>Jumlah (Rp)</th>
-              <th style="text-align: right;">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="txTableBody">
-            <!-- Dynamic Rows -->
-          </tbody>
-        </table>
-      </div>
-
-      <div id="emptyTableState" class="empty-state" style="display: none;">
-        <i data-lucide="search-x"></i>
-        <p>Tidak ada transaksi yang cocok dengan filter atau pencarian Anda.</p>
-      </div>
-    </section>
+        <div id="emptyTableState" class="empty-state" style="display: none;">
+          <i data-lucide="search-x"></i>
+          <p>Tidak ada transaksi yang cocok dengan filter atau pencarian Anda.</p>
+        </div>
+      </section>
+    </div>
   </div>
 
   <!-- MODAL: Catat Transaksi Baru -->
