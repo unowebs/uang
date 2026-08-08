@@ -36,28 +36,32 @@
       </div>
 
       <div class="header-actions">
-        <!-- Auth User Profile status -->
+        <!-- Auth User Profile status (Logged in only) -->
         <div id="authUserProfile" class="user-nav-profile" style="display: none;">
           <div class="user-avatar" id="userNavAvatar">U</div>
           <span id="userNavName" style="font-weight: 600;">Pengguna</span>
           <button id="btnLogout" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; margin-left: 4px;">Logout</button>
         </div>
 
+        <!-- Guest buttons: Login & Registrasi only (Guest mode) -->
         <div id="authGuestButtons" style="display: flex; gap: 8px;">
           <button id="btnOpenLoginModal" class="btn btn-secondary btn-sm"><i data-lucide="log-in"></i> Login</button>
           <button id="btnOpenRegisterModal" class="btn btn-primary btn-sm"><i data-lucide="user-plus"></i> Registrasi</button>
         </div>
 
-        <button id="btnOpenCategoryModal" class="btn btn-secondary btn-sm">
-          <i data-lucide="folder-plus"></i> + Kategori
-        </button>
-        <button id="btnOpenTxModal" class="btn btn-primary btn-sm">
-          <i data-lucide="plus-circle"></i> + Catat Transaksi
-        </button>
+        <!-- Authenticated actions (+ Kategori & + Catat Transaksi only when logged in) -->
+        <div id="authenticatedActions" style="display: none; gap: 8px;">
+          <button id="btnOpenCategoryModal" class="btn btn-secondary btn-sm">
+            <i data-lucide="folder-plus"></i> + Kategori
+          </button>
+          <button id="btnOpenTxModal" class="btn btn-primary btn-sm">
+            <i data-lucide="plus-circle"></i> + Catat Transaksi
+          </button>
+        </div>
       </div>
     </header>
 
-    <!-- LANDING PAGE VIEW (Shown on initial visit before logging in / entering app) -->
+    <!-- LANDING PAGE VIEW (Shown on initial visit before logging in) -->
     <div id="landingView" class="landing-section">
       <div class="landing-hero">
         <div class="landing-hero-badge">
@@ -74,9 +78,6 @@
           </button>
           <button id="landingBtnRegister" class="btn btn-primary btn-lg">
             <i data-lucide="user-plus"></i> Daftar Akun Gratis
-          </button>
-          <button id="landingBtnEnterApp" class="btn btn-secondary btn-lg" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc;">
-            <i data-lucide="arrow-right-circle"></i> Masuk ke Dashboard
           </button>
         </div>
       </div>

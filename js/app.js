@@ -80,22 +80,22 @@ function switchView(viewName) {
 function updateAuthUI() {
   const profileContainer = document.getElementById('authUserProfile');
   const guestButtons = document.getElementById('authGuestButtons');
+  const authActions = document.getElementById('authenticatedActions');
   const navAvatar = document.getElementById('userNavAvatar');
   const navName = document.getElementById('userNavName');
 
   if (store.currentUser) {
     if (profileContainer) profileContainer.style.display = 'flex';
+    if (authActions) authActions.style.display = 'flex';
     if (guestButtons) guestButtons.style.display = 'none';
     if (navName) navName.textContent = store.currentUser.name;
     if (navAvatar) navAvatar.textContent = store.currentUser.name.charAt(0).toUpperCase();
     switchView('dashboard');
   } else {
     if (profileContainer) profileContainer.style.display = 'none';
+    if (authActions) authActions.style.display = 'none';
     if (guestButtons) guestButtons.style.display = 'flex';
-    // If not logged in and no guest bypass, stay on landing page
-    if (!window.guestDashboardMode) {
-      switchView('landing');
-    }
+    switchView('landing');
   }
 }
 
@@ -367,11 +367,6 @@ function initEventListeners() {
   // Landing Page CTA Triggers
   document.getElementById('landingBtnLogin')?.addEventListener('click', () => openModal('loginModal'));
   document.getElementById('landingBtnRegister')?.addEventListener('click', () => openModal('registerModal'));
-  document.getElementById('landingBtnEnterApp')?.addEventListener('click', () => {
-    window.guestDashboardMode = true;
-    switchView('dashboard');
-    refreshAppView();
-  });
 
   // Modal Triggers
   document.getElementById('btnOpenTxModal')?.addEventListener('click', () => openModal('txModal'));
