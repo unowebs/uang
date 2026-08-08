@@ -120,9 +120,7 @@ class Store {
   loadUsers() {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!data) {
-      const defaultUser = [{ name: 'User Demo', email: 'demo@fintrack.id', password: 'password123' }];
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(defaultUser));
-      return defaultUser;
+      return [];
     }
     return JSON.parse(data);
   }
@@ -130,9 +128,7 @@ class Store {
   loadCurrentUser() {
     const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (!data) {
-      const defaultUser = { name: 'User Demo', email: 'demo@fintrack.id' };
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(defaultUser));
-      return defaultUser;
+      return null;
     }
     return JSON.parse(data);
   }
@@ -170,11 +166,7 @@ class Store {
   loadRooms() {
     const data = localStorage.getItem(STORAGE_KEYS.ROOMS);
     if (!data) {
-      const defaultRoom = [
-        { code: 'ROOM-UTAMA', name: 'Room Keuangan Keluarga', hostEmail: 'demo@fintrack.id', members: ['demo@fintrack.id'] }
-      ];
-      localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(defaultRoom));
-      return defaultRoom;
+      return [];
     }
     return JSON.parse(data);
   }
