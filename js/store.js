@@ -111,34 +111,34 @@ async function fetchCloudUsers() {
 
 async function saveUserToCloud(user) {
   try {
-    // Use UPSERT: POST with Prefer merge-duplicates (email is UNIQUE key)
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+    // ?on_conflict=email → tells Supabase which column to use for ON CONFLICT
+    // Prefer: resolution=merge-duplicates → INSERT ... ON CONFLICT(email) DO UPDATE SET ...
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=email`, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates'
+        'Prefer': 'resolution=merge-duplicates,return=representation'
       },
       body: JSON.stringify({
-        email: user.email,
+        email:     user.email,
         full_name: user.name,
-        password: user.password,
-        pin: user.pin,
-        // Don't send large avatar in every save to avoid payload issues
-        // Avatar is synced separately via updateAvatarInCloud
-        avatar: user.avatar || null
+        password:  user.password,
+        pin:       user.pin,
+        avatar:    user.avatar || null
       })
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.warn('Supabase upsert error:', res.status, errText);
+      console.error('[Supabase] upsert failed:', res.status, errText);
+    } else {
+      console.log('[Supabase] user synced:', user.email);
     }
   } catch (e) {
-    console.warn('Could not sync user to Supabase Cloud:', e);
+    console.warn('[Supabase] network error:', e.message);
   }
 }
-
 
 class Store {
   constructor() {
