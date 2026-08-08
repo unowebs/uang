@@ -613,29 +613,127 @@ class Store {
     return Object.values(breakdownMap).sort((a, b) => b.total - a.total);
   }
 
-  exportToCSV(filteredTxs) {
-    const headers = ['ID', 'Judul', 'Jenis', 'Jumlah', 'Mata Uang', 'Kategori', 'Tanggal & Jam', 'User / Room', 'Catatan'];
-    const rows = filteredTxs.map(tx => {
+  generateSpreadsheetData(filteredTxs) {
+    const headers = ['NO', 'TANGGAL & JAM', 'KETERANGAN', 'KATEGORI', 'JENIS', 'JUMLAH', 'MATA UANG', 'AKUN / ROOM', 'CATATAN'];
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    const rowsTsv = [];
+    const rowsHtml = [];
+
+    // Header TSV
+    rowsTsv.push(headers.join('\t'));
+
+    filteredTxs.forEach((tx, i) => {
       const cat = this.getCategoryById(tx.categoryId);
-      return [
-        `"${tx.id}"`,
-        `"${tx.title.replace(/"/g, '""')}"`,
-        `"${tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}"`,
-        tx.amount,
-        `"${tx.currency || 'IDR'}"`,
-        `"${cat.name.replace(/"/g, '""')}"`,
-        `"${new Date(tx.datetime).toLocaleString('id-ID')}"`,
-        `"${tx.roomCode ? 'Room: ' + tx.roomCode : tx.userEmail}"`,
-        `"${(tx.note || '').replace(/"/g, '""')}"`
-      ];
+      const isIncome = tx.type === 'income';
+      const dt = formatDateTime(tx.datetime);
+      const dateTimeStr = `${dt.dateStr} ${dt.timeStr}`;
+      const amountVal = tx.amount;
+      const currency = tx.currency || 'IDR';
+      const formattedAmt = formatMoney(amountVal, currency);
+
+      const amountInIdr = convertCurrency(amountVal, currency, 'IDR');
+      if (isIncome) totalIncome += amountInIdr;
+      else totalExpense += amountInIdr;
+
+      // TSV row (tab delimited for Excel/Google Sheets direct paste)
+      rowsTsv.push([
+        i + 1,
+        dateTimeStr,
+        tx.title,
+        cat.name,
+        isIncome ? 'Pemasukan' : 'Pengeluaran',
+        amountVal,
+        currency,
+        tx.roomCode ? `Room: ${tx.roomCode}` : (tx.userEmail || 'Pribadi'),
+        tx.note || ''
+      ].join('\t'));
+
+      // HTML formatted table row
+      rowsHtml.push(`
+        <tr class="${isIncome ? 'income-row' : 'expense-row'}">
+          <td style="text-align:center;font-weight:600;">${i + 1}</td>
+          <td>${dateTimeStr}</td>
+          <td style="font-weight:600;">${tx.title}</td>
+          <td><span style="display:inline-block;padding:2px 8px;border-radius:12px;background:${cat.color}22;color:${cat.color};font-weight:600;font-size:12px;">${cat.name}</span></td>
+          <td><span style="font-weight:700;color:${isIncome ? 'var(--emerald)' : 'var(--red)'};">${isIncome ? '➕ Pemasukan' : '➖ Pengeluaran'}</span></td>
+          <td style="text-align:right;font-weight:700;color:${isIncome ? 'var(--emerald)' : 'var(--red)'};">${isIncome ? '+' : '-'}${formattedAmt}</td>
+          <td style="font-size:12px;color:var(--text-3);">${tx.roomCode ? 'Room: ' + tx.roomCode : 'Pribadi'}</td>
+          <td style="font-size:12px;color:var(--text-3);">${tx.note || '-'}</td>
+        </tr>
+      `);
     });
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const netBalance = totalIncome - totalExpense;
+
+    // TSV Summary rows
+    rowsTsv.push('');
+    rowsTsv.push(['', '', 'TOTAL PEMASUKAN', '', '', totalIncome, 'IDR', '', ''].join('\t'));
+    rowsTsv.push(['', '', 'TOTAL PENGELUARAN', '', '', totalExpense, 'IDR', '', ''].join('\t'));
+    rowsTsv.push(['', '', 'SALDO BERSIH', '', '', netBalance, 'IDR', '', ''].join('\t'));
+
+    const tsvText = rowsTsv.join('\n');
+
+    const htmlTable = `
+      <div style="margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+        <div style="background:rgba(16,185,129,0.1);padding:8px 14px;border-radius:8px;color:var(--emerald);font-weight:700;">
+          📥 Total Pemasukan: ${formatMoney(totalIncome, 'IDR')}
+        </div>
+        <div style="background:rgba(244,63,94,0.1);padding:8px 14px;border-radius:8px;color:var(--red);font-weight:700;">
+          📤 Total Pengeluaran: ${formatMoney(totalExpense, 'IDR')}
+        </div>
+        <div style="background:rgba(99,102,241,0.1);padding:8px 14px;border-radius:8px;color:var(--primary);font-weight:800;">
+          💼 Saldo Bersih: ${formatMoney(netBalance, 'IDR')}
+        </div>
+      </div>
+      <table class="spreadsheet-formatted-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--bg-input);">
+            <th style="padding:10px;border:1px solid var(--border);">No</th>
+            <th style="padding:10px;border:1px solid var(--border);">Tanggal & Jam</th>
+            <th style="padding:10px;border:1px solid var(--border);">Keterangan</th>
+            <th style="padding:10px;border:1px solid var(--border);">Kategori</th>
+            <th style="padding:10px;border:1px solid var(--border);">Jenis</th>
+            <th style="padding:10px;border:1px solid var(--border);text-align:right;">Jumlah</th>
+            <th style="padding:10px;border:1px solid var(--border);">Akun / Room</th>
+            <th style="padding:10px;border:1px solid var(--border);">Catatan</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml.join('')}
+        </tbody>
+        <tfoot>
+          <tr class="summary-row" style="background:var(--bg-input);font-weight:800;">
+            <td colspan="5" style="padding:12px;border:1px solid var(--border);text-align:right;">TOTAL PEMASUKAN:</td>
+            <td style="padding:12px;border:1px solid var(--border);text-align:right;color:var(--emerald);">${formatMoney(totalIncome, 'IDR')}</td>
+            <td colspan="2" style="border:1px solid var(--border);"></td>
+          </tr>
+          <tr class="summary-row" style="background:var(--bg-input);font-weight:800;">
+            <td colspan="5" style="padding:12px;border:1px solid var(--border);text-align:right;">TOTAL PENGELUARAN:</td>
+            <td style="padding:12px;border:1px solid var(--border);text-align:right;color:var(--red);">${formatMoney(totalExpense, 'IDR')}</td>
+            <td colspan="2" style="border:1px solid var(--border);"></td>
+          </tr>
+          <tr class="summary-row" style="background:var(--bg-input);font-weight:800;">
+            <td colspan="5" style="padding:12px;border:1px solid var(--border);text-align:right;">SALDO BERSIH:</td>
+            <td style="padding:12px;border:1px solid var(--border);text-align:right;color:var(--primary);">${formatMoney(netBalance, 'IDR')}</td>
+            <td colspan="2" style="border:1px solid var(--border);"></td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    return { tsvText, htmlTable, count: filteredTxs.length };
+  }
+
+  exportToCSV(filteredTxs) {
+    const { tsvText } = this.generateSpreadsheetData(filteredTxs);
+    const blob = new Blob([tsvText], { type: 'text/tab-separated-values;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `FinTrack_Rekapan_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `FinTrack_Spreadsheet_${new Date().toISOString().slice(0, 10)}.tsv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

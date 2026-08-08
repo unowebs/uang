@@ -975,13 +975,78 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     toast('Menyiapkan PDF…', '📄');
   });
 
-  document.getElementById('btnExportCSV')?.addEventListener('click', () => {
+  // ── Web Spreadsheet & Google Sheets Modal ──
+  let activeSpreadsheetTsv = '';
+
+  document.getElementById('btnExportSpreadsheet')?.addEventListener('click', () => {
     const from = document.getElementById('recapFrom').value;
     const to   = document.getElementById('recapTo').value;
     const txs  = store.getFilteredTransactions(from ? 'custom' : state.timeframe, from, to, 'all', 'all', '');
-    if (!txs.length) { alert('Tidak ada data untuk diekspor.'); return; }
-    store.exportToCSV(txs);
-    toast('CSV / Excel berhasil diunduh!', '📥');
+    if (!txs.length) { alert('Tidak ada data transaksi untuk ditampilkan.'); return; }
+
+    const { tsvText, htmlTable } = store.generateSpreadsheetData(txs);
+    activeSpreadsheetTsv = tsvText;
+
+    const container = document.getElementById('sheetModalContainer');
+    if (container) container.innerHTML = htmlTable;
+
+    // Auto-copy TSV to clipboard immediately so it's ready for Google Sheets
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(tsvText).catch(() => {});
+    }
+
+    openModal('modalSpreadsheet');
+    toast(`Spreadsheet siap (${txs.length} transaksi)`, '📊');
+  });
+
+  // ── Buka Google Sheets & Auto Paste ──
+  document.getElementById('btnOpenGoogleSheets')?.addEventListener('click', () => {
+    if (activeSpreadsheetTsv && navigator.clipboard) {
+      navigator.clipboard.writeText(activeSpreadsheetTsv).then(() => {
+        toast('📋 Data disalin ke clipboard! Membuka Google Sheets…', '🚀');
+      }).catch(() => {});
+    }
+    window.open('https://sheets.new', '_blank');
+  });
+
+  // ── Salin TSV ──
+  document.getElementById('btnCopySheetFormat')?.addEventListener('click', () => {
+    if (activeSpreadsheetTsv && navigator.clipboard) {
+      navigator.clipboard.writeText(activeSpreadsheetTsv).then(() => {
+        toast('✅ Format Spreadsheet disalin! Tinggal Ctrl+V di Excel/Google Sheets.', '📋');
+      });
+    }
+  });
+
+  // ── Cetak Spreadsheet ──
+  document.getElementById('btnPrintSpreadsheet')?.addEventListener('click', () => {
+    const content = document.getElementById('sheetModalContainer')?.innerHTML;
+    if (!content) return;
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FinTrack ID — Spreadsheet Rekap Keuangan</title>
+        <style>
+          body { font-family: sans-serif; padding: 20px; color: #1e293b; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; }
+          th { background: #f1f5f9; text-align: left; }
+          .income-row { background: #f0fdf4; }
+          .expense-row { background: #fef2f2; }
+          .summary-row { background: #e0e7ff; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <h2>📊 Rekap Keuangan FinTrack ID</h2>
+        <p>Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
+        ${content}
+        <script>window.print();</script>
+      </body>
+      </html>
+    `);
+    win.document.close();
   });
 }
 
