@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinTrack ID - Aplikasi Manajemen Keuangan & Kolaborasi Room</title>
+  <meta name="description" content="Aplikasi manajemen keuangan harian, bulanan, tahunan dengan autentikasi, kolaborasi room code, kustomisasi grafik dengan foto, spreadsheet interaktif, dan ekspor PDF.">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header Navbar with Auth Profile & Global Actions -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="wallet"></i>
+        </div>
+        <div class="brand-text">
+          <h1>FinTrack ID</h1>
+          <p>Keuangan Harian, Kolaborasi Room & Laporan PDF</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Auth User Profile status -->
+        <div id="authUserProfile" class="user-nav-profile">
+          <div class="user-avatar" id="userNavAvatar">D</div>
+          <span id="userNavName" style="font-weight: 600;">User Demo</span>
+          <button id="btnLogout" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px;">Logout</button>
+        </div>
+
+        <div id="authGuestButtons" style="display: none; gap: 8px;">
+          <button id="btnOpenLoginModal" class="btn btn-secondary btn-sm"><i data-lucide="log-in"></i> Login</button>
+          <button id="btnOpenRegisterModal" class="btn btn-primary btn-sm"><i data-lucide="user-plus"></i> Registrasi</button>
+        </div>
+
+        <button id="btnOpenCategoryModal" class="btn btn-secondary btn-sm">
+          <i data-lucide="folder-plus"></i> + Kategori
+        </button>
+        <button id="btnOpenTxModal" class="btn btn-primary">
+          <i data-lucide="plus-circle"></i> + Catat Transaksi
+        </button>
+      </div>
+    </header>
+
+    <!-- Room Collaboration Banner (Fitur Kode Room) -->
+    <section class="room-bar">
+      <div class="room-info">
+        <i data-lucide="users" style="color: var(--primary);"></i>
+        <span>Konteks Keuangan:</span>
+        <span id="activeRoomBadge" class="room-badge">Keuangan Pribadi</span>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button id="btnOpenCreateRoomModal" class="btn btn-secondary btn-sm">
+          <i data-lucide="plus-square"></i> Buat Kode Room
+        </button>
+        <button id="btnOpenJoinRoomModal" class="btn btn-secondary btn-sm">
+          <i data-lucide="log-in"></i> Gabung Room
+        </button>
+        <button id="btnLeaveRoom" class="btn btn-secondary btn-sm" style="display: none; color: var(--expense);">
+          <i data-lucide="log-out"></i> Keluar Room
+        </button>
+      </div>
+    </section>
+
+    <!-- Timeframe Selection Bar -->
+    <section class="timeframe-bar">
+      <div class="timeframe-tabs">
+        <button class="time-tab" data-timeframe="daily">Hari Ini</button>
+        <button class="time-tab" data-timeframe="weekly">Minggu Ini</button>
+        <button class="time-tab active" data-timeframe="monthly">Bulan Ini</button>
+        <button class="time-tab" data-timeframe="yearly">Tahun Ini</button>
+        <button class="time-tab" data-timeframe="all">Semua</button>
+        <button class="time-tab" data-timeframe="custom">Kustom Date</button>
+      </div>
+
+      <div id="customDateRangeContainer" class="custom-date-range hidden" style="display: none;">
+        <input type="date" id="startDateInput" aria-label="Tanggal Mulai">
+        <span style="color: var(--text-dim); font-size: 13px;">s/d</span>
+        <input type="date" id="endDateInput" aria-label="Tanggal Akhir">
+        <button id="btnApplyCustomDate" class="btn btn-primary btn-sm">Terapkan</button>
+      </div>
+
+      <div id="activePeriodLabel" class="active-period-badge">
+        Periode: Bulan Ini
+      </div>
+    </section>
+
+    <!-- Overview Metrics Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card net">
+        <div class="metric-header">
+          <span class="metric-title">Saldo Bersih</span>
+          <div class="metric-icon"><i data-lucide="scale"></i></div>
+        </div>
+        <div id="metricNetBalance" class="metric-value">Rp 0</div>
+        <div class="metric-subtitle">Selisih Pemasukan & Pengeluaran</div>
+      </div>
+
+      <div class="metric-card income">
+        <div class="metric-header">
+          <span class="metric-title">Total Pemasukan</span>
+          <div class="metric-icon"><i data-lucide="trending-up"></i></div>
+        </div>
+        <div id="metricTotalIncome" class="metric-value">Rp 0</div>
+        <div class="metric-subtitle">Total pemasukan periode ini</div>
+      </div>
+
+      <div class="metric-card expense">
+        <div class="metric-header">
+          <span class="metric-title">Total Pengeluaran</span>
+          <div class="metric-icon"><i data-lucide="trending-down"></i></div>
+        </div>
+        <div id="metricTotalExpense" class="metric-value">Rp 0</div>
+        <div class="metric-subtitle">Total pengeluaran periode ini</div>
+      </div>
+
+      <div class="metric-card average">
+        <div class="metric-header">
+          <span class="metric-title">Rata-rata Pengeluaran</span>
+          <div class="metric-icon"><i data-lucide="bar-chart-2"></i></div>
+        </div>
+        <div id="metricDailyAvg" class="metric-value">Rp 0</div>
+        <div class="metric-subtitle">Per hari aktif dalam periode</div>
+      </div>
+    </section>
+
+    <!-- Visual Dashboard Analytics with Custom Chart Selector & Photo Upload -->
+    <section class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i data-lucide="pie-chart"></i> Visualisasi Grafik Keuangan</h2>
+          <div class="chart-tab-toggles" style="display: flex; gap: 6px;">
+            <button id="tabBtnDonut" class="btn btn-secondary btn-sm active" style="padding: 4px 10px; font-size: 11px;">Kategori</button>
+            <button id="tabBtnTrend" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px;">Tren</button>
+          </div>
+        </div>
+
+        <!-- Custom Chart Options & Image Uploader -->
+        <div class="chart-customizer-bar">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
+            <i data-lucide="settings-2" style="width: 14px; height: 14px;"></i>
+            <span>Tipe Grafik:</span>
+            <select id="chartTypeSelect" class="filter-select" style="padding: 4px 10px; font-size: 12px;">
+              <option value="doughnut">Pie / Donut</option>
+              <option value="bar">Batang (Bar)</option>
+              <option value="line">Garis (Line)</option>
+              <option value="scatter">Titik / Point</option>
+              <option value="radar">Radar</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-left: auto;">
+            <label for="chartImageUpload" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; cursor: pointer;">
+              <i data-lucide="image"></i> Custom Foto Grafik
+            </label>
+            <input type="file" id="chartImageUpload" accept="image/*" style="display: none;">
+            <button id="btnResetChartImage" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; display: none;" title="Reset Foto">
+              &times; Reset Foto
+            </button>
+          </div>
+        </div>
+
+        <div id="donutChartContainer" class="chart-wrapper">
+          <canvas id="categoryChartCanvas"></canvas>
+          <div id="noCategoryDataMsg" class="empty-state" style="display: none; height: 100%; justify-content: center; flex-direction: column; align-items: center;">
+            <i data-lucide="inbox"></i>
+            <p>Belum ada data pengeluaran pada periode ini.</p>
+          </div>
+        </div>
+
+        <div id="trendChartContainer" class="chart-wrapper" style="display: none;">
+          <canvas id="trendChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Column: Budget Limits -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i data-lucide="target"></i> Batas Anggaran Kategori</h2>
+          <button id="btnAddCategoryQuick" class="btn btn-secondary btn-sm" style="font-size: 11px;">+ Tambah</button>
+        </div>
+
+        <div id="budgetListContainer" class="budget-list">
+          <!-- Dynamic budget items -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: Rekapan Data Keuangan & Interactive Spreadsheet & PDF Download -->
+    <section class="card" style="margin-bottom: 28px;">
+      <div class="card-header">
+        <h2 class="card-title"><i data-lucide="file-spreadsheet"></i> Rekapan Keuangan & Export Spreadsheet / PDF</h2>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 13px; color: var(--text-muted);">Dari Tanggal:</label>
+          <input type="date" id="recapStartDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 13px; color: var(--text-muted);">Sampai Tanggal:</label>
+          <input type="date" id="recapEndDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
+        </div>
+
+        <button id="btnGenerateRecap" class="btn btn-primary btn-sm">
+          <i data-lucide="table"></i> Tampilkan Rekap Spreadsheet
+        </button>
+
+        <button id="btnDownloadPDF" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+          <i data-lucide="file-text"></i> Simpan / Download PDF
+        </button>
+
+        <button id="btnExportCSVRecap" class="btn btn-secondary btn-sm">
+          <i data-lucide="download"></i> Download Excel / CSV
+        </button>
+      </div>
+
+      <!-- Interactive Spreadsheet Grid View -->
+      <div class="spreadsheet-container">
+        <table class="spreadsheet-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Tanggal & Jam</th>
+              <th>Keterangan / Transaksi</th>
+              <th>Kategori</th>
+              <th>Jenis</th>
+              <th style="text-align: right;">Jumlah (Rp)</th>
+            </tr>
+          </thead>
+          <tbody id="spreadsheetBody">
+            <!-- Dynamic Spreadsheet Content -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Transaction History Table -->
+    <section class="card transactions-card">
+      <div class="card-header">
+        <h2 class="card-title"><i data-lucide="receipt"></i> Riwayat & Catatan Transaksi</h2>
+        <div id="txCountBadge" style="font-size: 12px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: var(--radius-full);">
+          0 Transaksi
+        </div>
+      </div>
+
+      <div class="table-controls">
+        <div class="search-input-wrap">
+          <i data-lucide="search"></i>
+          <input type="text" id="searchInput" placeholder="Cari transaksi (contoh: Nasi Goreng, Bensin...)" aria-label="Cari transaksi">
+        </div>
+
+        <select id="categoryFilterSelect" class="filter-select" aria-label="Filter Kategori">
+          <option value="all">Semua Kategori</option>
+        </select>
+
+        <select id="typeFilterSelect" class="filter-select" aria-label="Filter Jenis Transaksi">
+          <option value="all">Semua Jenis</option>
+          <option value="income">Pemasukan</option>
+          <option value="expense">Pengeluaran</option>
+        </select>
+      </div>
+
+      <div class="table-responsive">
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Transaksi / Keterangan</th>
+              <th>Kategori</th>
+              <th>Tanggal & Jam (Editable)</th>
+              <th>Jumlah (Rp)</th>
+              <th style="text-align: right;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="txTableBody">
+            <!-- Dynamic Rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="emptyTableState" class="empty-state" style="display: none;">
+        <i data-lucide="search-x"></i>
+        <p>Tidak ada transaksi yang cocok dengan filter atau pencarian Anda.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- MODAL: Catat Transaksi Baru -->
+  <div id="txModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="plus-circle" style="color: var(--primary);"></i> Catat Transaksi Keuangan</h3>
+        <button class="modal-close" data-close="txModal">&times;</button>
+      </div>
+      <form id="txForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Jenis Transaksi</label>
+            <div class="type-toggle-group">
+              <div class="type-radio-btn">
+                <input type="radio" id="typeExpense" name="txType" value="expense" checked>
+                <label for="typeExpense" class="type-label expense-label">
+                  <i data-lucide="arrow-down-right"></i> Pengeluaran
+                </label>
+              </div>
+              <div class="type-radio-btn">
+                <input type="radio" id="typeIncome" name="txType" value="income">
+                <label for="typeIncome" class="type-label income-label">
+                  <i data-lucide="arrow-up-right"></i> Pemasukan
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="txTitle">Keterangan / Untuk Apa</label>
+            <input type="text" id="txTitle" class="form-control" placeholder="Contoh: Makan Siang, Bensin, Gaji..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="txAmount">Jumlah (Rp)</label>
+            <input type="number" id="txAmount" class="form-control" placeholder="0" min="1" step="1000" required>
+          </div>
+
+          <div class="form-group">
+            <label for="txCategory">Kategori Transaksi</label>
+            <select id="txCategory" class="form-control" required></select>
+          </div>
+
+          <div class="form-group">
+            <label for="txDatetime">Tanggal & Jam Transaksi</label>
+            <input type="datetime-local" id="txDatetime" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label for="txNote">Catatan Tambahan (Opsional)</label>
+            <input type="text" id="txNote" class="form-control" placeholder="Contoh: Pembayaran QRIS...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="txModal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Simpan Transaksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah Kategori -->
+  <div id="categoryModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="folder-plus" style="color: var(--primary);"></i> Tambah Kategori Kustom</h3>
+        <button class="modal-close" data-close="categoryModal">&times;</button>
+      </div>
+      <form id="categoryForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="catName">Nama Kategori</label>
+            <input type="text" id="catName" class="form-control" placeholder="Contoh: Hobi, Pulsa..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="catType">Jenis Kategori</label>
+            <select id="catType" class="form-control" required>
+              <option value="expense">Pengeluaran</option>
+              <option value="income">Pemasukan</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="catBudget">Batas Anggaran Bulanan (Rp) - Opsional</label>
+            <input type="number" id="catBudget" class="form-control" placeholder="0" min="0" step="50000">
+          </div>
+
+          <div class="form-group">
+            <label>Warna Aksen</label>
+            <div class="color-options" id="colorPickerOptions">
+              <div class="color-radio selected" data-color="#f43f5e" style="background: #f43f5e;"></div>
+              <div class="color-radio" data-color="#3b82f6" style="background: #3b82f6;"></div>
+              <div class="color-radio" data-color="#10b981" style="background: #10b981;"></div>
+              <div class="color-radio" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
+              <div class="color-radio" data-color="#f59e0b" style="background: #f59e0b;"></div>
+            </div>
+            <input type="hidden" id="catColor" value="#f43f5e">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="categoryModal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Simpan Kategori</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Auth Login -->
+  <div id="loginModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="log-in" style="color: var(--primary);"></i> Login Pengguna</h3>
+        <button class="modal-close" data-close="loginModal">&times;</button>
+      </div>
+      <form id="loginForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" class="form-control" placeholder="nama@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="loginModal">Batal</button>
+          <button type="submit" class="btn btn-primary">Masuk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Auth Register -->
+  <div id="registerModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="user-plus" style="color: var(--primary);"></i> Registrasi Akun Baru</h3>
+        <button class="modal-close" data-close="registerModal">&times;</button>
+      </div>
+      <form id="registerForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="regName">Nama Lengkap</label>
+            <input type="text" id="regName" class="form-control" placeholder="Contoh: Budi Santoso" required>
+          </div>
+          <div class="form-group">
+            <label for="regEmail">Email</label>
+            <input type="email" id="regEmail" class="form-control" placeholder="nama@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input type="password" id="regPassword" class="form-control" placeholder="Minimal 6 karakter" minlength="6" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="registerModal">Batal</button>
+          <button type="submit" class="btn btn-primary">Daftar Akun</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Buat Kode Room Kolaborasi -->
+  <div id="createRoomModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="plus-square" style="color: var(--primary);"></i> Buat Kode Room Kolaborasi</h3>
+        <button class="modal-close" data-close="createRoomModal">&times;</button>
+      </div>
+      <form id="createRoomForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="roomName">Nama Room Keuangan</label>
+            <input type="text" id="roomName" class="form-control" placeholder="Contoh: Keuangan Usaha Bersama" required>
+          </div>
+          <div class="form-group">
+            <label for="roomCodeInput">Kode Room Unik</label>
+            <input type="text" id="roomCodeInput" class="form-control" placeholder="Contoh: KEUANGAN-USAHA-2026" required style="text-transform: uppercase;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="createRoomModal">Batal</button>
+          <button type="submit" class="btn btn-primary">Buat Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Gabung Kode Room -->
+  <div id="joinRoomModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i data-lucide="log-in" style="color: var(--primary);"></i> Gabung Kode Room Kolaborasi</h3>
+        <button class="modal-close" data-close="joinRoomModal">&times;</button>
+      </div>
+      <form id="joinRoomForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="joinCodeInput">Masukkan Kode Room</label>
+            <input type="text" id="joinCodeInput" class="form-control" placeholder="Contoh: ROOM-UTAMA" required style="text-transform: uppercase;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="joinRoomModal">Batal</button>
+          <button type="submit" class="btn btn-primary">Gabung Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Application Logic Modules -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
