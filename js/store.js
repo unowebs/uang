@@ -274,9 +274,15 @@ class Store {
     this.chartImagePattern = localStorage.getItem(STORAGE_KEYS.CHART_IMAGE) || null;
 
     // Initial background sync from cloud for multi-browser support
-    this.syncUsersFromCloud();
-    this.syncRoomsFromCloud();
-    this.syncTransactionsFromCloud();
+    this.syncAllFromCloud();
+  }
+
+  async syncAllFromCloud() {
+    await Promise.all([
+      this.syncUsersFromCloud(),
+      this.syncRoomsFromCloud(),
+      this.syncTransactionsFromCloud()
+    ]);
   }
 
   async syncUsersFromCloud() {
@@ -394,7 +400,7 @@ class Store {
     }
 
     // Check cloud & local
-    await this.syncUsersFromCloud();
+    await this.syncAllFromCloud();
 
     const existing = this.users.find(u => u.email === cleanEmail);
     if (existing) {
@@ -425,8 +431,8 @@ class Store {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
 
-    // Always sync from cloud first to get latest profile (including avatar updates)
-    await this.syncUsersFromCloud();
+    // Always sync from cloud first
+    await this.syncAllFromCloud();
 
     let user = this.users.find(u => u.email === cleanEmail);
 
@@ -452,8 +458,8 @@ class Store {
       throw new Error('Email dan PIN wajib diisi.');
     }
 
-    // Always sync from cloud first to get latest profile
-    await this.syncUsersFromCloud();
+    // Always sync from cloud first
+    await this.syncAllFromCloud();
 
     const userByEmail = this.users.find(u => u.email === cleanEmail);
 
