@@ -79,11 +79,23 @@ class Store {
   }
 
   registerUser(name, email, password) {
-    const existing = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existing) {
-      throw new Error('Email sudah terdaftar. Silakan login.');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass  = password.trim();
+    const cleanName  = name.trim();
+
+    if (!cleanName || !cleanEmail || !cleanPass) {
+      throw new Error('Semua kolom harus diisi.');
     }
-    const newUser = { name, email: email.toLowerCase(), password };
+    if (cleanPass.length < 6) {
+      throw new Error('Password minimal 6 karakter.');
+    }
+
+    const existing = this.users.find(u => u.email === cleanEmail);
+    if (existing) {
+      throw new Error('Email sudah terdaftar. Silakan login dengan email tersebut.');
+    }
+
+    const newUser = { name: cleanName, email: cleanEmail, password: cleanPass };
     this.users.push(newUser);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
 
@@ -93,11 +105,18 @@ class Store {
   }
 
   loginUser(email, password) {
-    const user = this.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (!user) {
-      throw new Error('Email atau password salah.');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass  = password.trim();
+
+    const userByEmail = this.users.find(u => u.email === cleanEmail);
+    if (!userByEmail) {
+      throw new Error('Email tidak ditemukan. Pastikan kamu sudah mendaftar.');
     }
-    this.currentUser = { name: user.name, email: user.email };
+    if (userByEmail.password !== cleanPass) {
+      throw new Error('Password salah. Coba lagi dengan hati-hati.');
+    }
+
+    this.currentUser = { name: userByEmail.name, email: userByEmail.email };
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
     return this.currentUser;
   }

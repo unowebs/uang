@@ -51,6 +51,27 @@ function showToast(message, iconName = 'check-circle', type = '') {
   }, 3200);
 }
 
+// Inline form error helpers
+function showFormError(containerId, message) {
+  let el = document.getElementById(containerId);
+  if (!el) {
+    // Create error container if not already there
+    const form = document.querySelector(`#${containerId.replace('Error', 'Form')}`);
+    if (!form) return;
+    el = document.createElement('div');
+    el.id = containerId;
+    el.style.cssText = 'background: var(--expense-bg); border: 1px solid var(--expense); color: var(--expense); padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;';
+    form.querySelector('.modal-body').prepend(el);
+  }
+  el.style.display = 'flex';
+  el.innerHTML = `<span style="font-size:18px;">⚠️</span> ${message}`;
+}
+
+function clearFormError(containerId) {
+  const el = document.getElementById(containerId);
+  if (el) el.style.display = 'none';
+}
+
 // Emoji Celebration Popup
 function showEmojiCelebration(type) {
   const container = document.getElementById('emojiPopupContainer');
@@ -499,34 +520,36 @@ function initEventListeners() {
   // Auth Form Handlers
   document.getElementById('loginForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPassword').value;
+    const email = document.getElementById('loginEmail').value;
+    const pass  = document.getElementById('loginPassword').value;
 
     try {
       store.loginUser(email, pass);
       closeModal('loginModal');
       document.getElementById('loginForm').reset();
+      clearFormError('loginError');
       refreshAppView();
-      showToast(`Selamat datang kembali, ${store.currentUser.name}!`, 'user-check');
+      showToast(`Selamat datang kembali, ${store.currentUser.name}! 👋`, 'user-check');
     } catch (err) {
-      alert(err.message);
+      showFormError('loginError', err.message);
     }
   });
 
   document.getElementById('registerForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const pass = document.getElementById('regPassword').value;
+    const name  = document.getElementById('regName').value;
+    const email = document.getElementById('regEmail').value;
+    const pass  = document.getElementById('regPassword').value;
 
     try {
       store.registerUser(name, email, pass);
       closeModal('registerModal');
       document.getElementById('registerForm').reset();
+      clearFormError('registerError');
       refreshAppView();
-      showToast(`Akun ${name} berhasil dibuat!`, 'user-plus');
+      showToast(`Akun berhasil dibuat! Selamat datang, ${store.currentUser.name}! 🎉`, 'user-plus');
     } catch (err) {
-      alert(err.message);
+      showFormError('registerError', err.message);
     }
   });
 
