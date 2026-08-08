@@ -20,14 +20,14 @@ const appState = {
 };
 
 // Toast Notifications
-function showToast(message, iconName = 'check-circle') {
+function showToast(message, iconName = 'check-circle', type = '') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = 'toast';
+  toast.className = `toast ${type === 'income' ? 'income-toast' : type === 'expense' ? 'expense-toast' : ''}`;
   toast.innerHTML = `
-    <i data-lucide="${iconName}" style="color: var(--primary);"></i>
+    <i data-lucide="${iconName}" style="color: ${type === 'income' ? 'var(--income)' : type === 'expense' ? 'var(--expense)' : 'var(--primary)'};"></i>
     <span>${message}</span>
   `;
   container.appendChild(toast);
@@ -40,6 +40,51 @@ function showToast(message, iconName = 'check-circle') {
     setTimeout(() => toast.remove(), 300);
   }, 3200);
 }
+
+// Emoji Celebration Popup
+function showEmojiCelebration(type) {
+  const container = document.getElementById('emojiPopupContainer');
+  if (!container) return;
+
+  const isIncome = type === 'income';
+  const emoji = isIncome ? '🤑' : '😢';
+  const message = isIncome ? 'Yeay, selamat kamu kaya! 🎉' : 'Wah, kamu sudah impulsif hari ini.';
+
+  // Create popup
+  const popup = document.createElement('div');
+  popup.className = 'emoji-popup';
+  popup.innerHTML = `
+    <div class="emoji-popup-inner">
+      <div class="emoji-big">${emoji}</div>
+      <div class="emoji-label">${message}</div>
+    </div>
+  `;
+  container.appendChild(popup);
+
+  // Spawn confetti only for income
+  if (isIncome) {
+    const colors = ['#7c3aed', '#ec4899', '#fbbf24', '#10b981', '#06b6d4', '#f97316'];
+    for (let i = 0; i < 60; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.cssText = `
+        left: ${Math.random() * 100}%;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        --duration: ${1.8 + Math.random() * 1.4}s;
+        --delay: ${Math.random() * 0.6}s;
+        width: ${6 + Math.random() * 8}px;
+        height: ${8 + Math.random() * 10}px;
+        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      `;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 3500);
+    }
+  }
+
+  // Remove popup after animation
+  setTimeout(() => popup.remove(), 2600);
+}
+
 
 // Modal Helpers
 function openModal(modalId) {
@@ -611,7 +656,14 @@ function initEventListeners() {
     closeModal('txModal');
     document.getElementById('txForm').reset();
     refreshAppView();
-    showToast(`Transaksi "${title}" berhasil dicatat!`, 'check-circle');
+
+    // Emoji celebration based on transaction type
+    showEmojiCelebration(type);
+
+    const toastMsg = type === 'income'
+      ? `💰 ${title} — Yeay, selamat kamu kaya!`
+      : `😅 ${title} — tercatat sebagai pengeluaran!`;
+    showToast(toastMsg, type === 'income' ? 'trending-up' : 'trending-down', type);
   });
 
   document.getElementById('categoryForm')?.addEventListener('submit', (e) => {
