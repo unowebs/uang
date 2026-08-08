@@ -416,6 +416,8 @@ class Store {
 
     this.currentUser = { ...newUser };
     this.saveCurrentUser();
+    this.activeRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ROOM);
     return this.currentUser;
   }
 
@@ -437,6 +439,8 @@ class Store {
 
     this.currentUser = { ...user };
     this.saveCurrentUser();
+    this.activeRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ROOM);
     return this.currentUser;
   }
 
@@ -463,6 +467,8 @@ class Store {
 
     this.currentUser = { ...userByEmail };
     this.saveCurrentUser();
+    this.activeRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ROOM);
     return this.currentUser;
   }
 
@@ -511,6 +517,8 @@ class Store {
   logoutUser() {
     this.currentUser = null;
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    this.activeRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_ROOM);
   }
 
   // --- Rooms Handlers ---
