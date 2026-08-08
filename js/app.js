@@ -86,6 +86,53 @@ function showEmojiCelebration(type) {
 }
 
 
+// Switch form fields based on transaction type
+function updateTxFormByType(type) {
+  const isIncome = type === 'income';
+
+  // Dynamic modal title
+  const title = document.getElementById('txModalTitle');
+  if (title) {
+    title.innerHTML = isIncome
+      ? '<i data-lucide="arrow-up-right" style="color: var(--income);"></i> Catat Pemasukan'
+      : '<i data-lucide="arrow-down-right" style="color: var(--expense);"></i> Catat Pengeluaran';
+    lucide.createIcons();
+  }
+
+  // Dynamic title label & placeholder
+  const titleLabel = document.getElementById('txTitleLabel');
+  const titleInput = document.getElementById('txTitle');
+  if (isIncome) {
+    if (titleLabel) titleLabel.textContent = '📝 Nama / Keterangan Pemasukan';
+    if (titleInput) titleInput.placeholder = 'Contoh: Gaji Agustus, Hasil Jualan, Uang Saku...';
+  } else {
+    if (titleLabel) titleLabel.textContent = '📝 Untuk Apa? (Keterangan)';
+    if (titleInput) titleInput.placeholder = 'Contoh: Makan Siang, Bensin, Belanja...';
+  }
+
+  // Show/hide income source field
+  const incomeSourceGroup = document.getElementById('incomeSourceGroup');
+  if (incomeSourceGroup) incomeSourceGroup.style.display = isIncome ? 'block' : 'none';
+
+  // Show/hide expense merchant field
+  const merchantGroup = document.getElementById('expenseMerchantGroup');
+  if (merchantGroup) merchantGroup.style.display = isIncome ? 'none' : 'block';
+
+  // Dynamic amount label
+  const amountLabel = document.getElementById('txAmountLabel');
+  if (amountLabel) {
+    amountLabel.textContent = isIncome ? '💵 Jumlah Pemasukan (Rp)' : '💸 Jumlah Pengeluaran (Rp)';
+  }
+
+  // Dynamic submit button color
+  const submitBtn = document.getElementById('txSubmitBtn');
+  if (submitBtn) {
+    submitBtn.style.background = isIncome
+      ? 'linear-gradient(135deg, #10b981, #059669)'
+      : 'linear-gradient(135deg, var(--primary), #6d28d9)';
+  }
+}
+
 // Modal Helpers
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
@@ -96,6 +143,9 @@ function openModal(modalId) {
       if (datetimeInput) {
         datetimeInput.value = getCurrentDateTimeLocalString();
       }
+      // Init form fields for current selected type
+      const currentType = document.querySelector('input[name="txType"]:checked')?.value || 'expense';
+      updateTxFormByType(currentType);
     }
   }
 }
@@ -515,7 +565,13 @@ function initEventListeners() {
     showToast('Kembali ke mode Keuangan Pribadi.', 'user');
   });
 
-  // Custom Chart Selector & Photo Pattern Uploader
+  // Listen for type radio change — update form fields dynamically
+  document.querySelectorAll('input[name="txType"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      updateTxFormByType(e.target.value);
+    });
+  });
+
   document.getElementById('chartTypeSelect')?.addEventListener('change', (e) => {
     store.setChartType(e.target.value);
     refreshAppView();
@@ -646,15 +702,27 @@ function initEventListeners() {
     const datetime = document.getElementById('txDatetime').value;
     const note = document.getElementById('txNote').value.trim();
     const type = document.querySelector('input[name="txType"]:checked').value;
+    const incomeSource = document.getElementById('txIncomeSource')?.value || '';
+    const merchant = document.getElementById('txMerchant')?.value.trim() || '';
 
     if (!title || isNaN(amount) || amount <= 0 || !datetime) {
       alert('Mohon isi data transaksi dengan lengkap.');
       return;
     }
 
-    store.addTransaction({ title, amount, categoryId, datetime, note, type });
+    // Build the note with source/merchant context
+    let enrichedNote = note;
+    if (type === 'income' && incomeSource) {
+      enrichedNote = incomeSource + (note ? ` • ${note}` : '');
+    } else if (type === 'expense' && merchant) {
+      enrichedNote = merchant + (note ? ` • ${note}` : '');
+    }
+
+    store.addTransaction({ title, amount, categoryId, datetime, note: enrichedNote, type });
     closeModal('txModal');
     document.getElementById('txForm').reset();
+    // Reset form fields to expense default after submit
+    updateTxFormByType('expense');
     refreshAppView();
 
     // Emoji celebration based on transaction type

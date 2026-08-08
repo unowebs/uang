@@ -358,15 +358,16 @@
     </div>
   </div>
 
-  <!-- MODAL: Catat Transaksi Baru -->
   <div id="txModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3><i data-lucide="plus-circle" style="color: var(--primary);"></i> Catat Transaksi Keuangan</h3>
+        <h3 id="txModalTitle"><i data-lucide="plus-circle" style="color: var(--primary);"></i> Catat Transaksi</h3>
         <button class="modal-close" data-close="txModal">&times;</button>
       </div>
       <form id="txForm">
         <div class="modal-body">
+
+          <!-- Jenis Transaksi -->
           <div class="form-group">
             <label>Jenis Transaksi</label>
             <div class="type-toggle-group">
@@ -385,38 +386,68 @@
             </div>
           </div>
 
+          <!-- Label berubah sesuai tipe -->
           <div class="form-group">
-            <label for="txTitle">Keterangan / Untuk Apa</label>
-            <input type="text" id="txTitle" class="form-control" placeholder="Contoh: Makan Siang, Bensin, Gaji..." required>
+            <label for="txTitle" id="txTitleLabel">Untuk Apa? (Keterangan)</label>
+            <input type="text" id="txTitle" class="form-control" placeholder="Contoh: Makan Siang, Bensin..." required>
           </div>
 
+          <!-- INCOME ONLY: Sumber Pemasukan -->
+          <div class="form-group" id="incomeSourceGroup" style="display: none;">
+            <label for="txIncomeSource">💰 Pemasukan dari Mana?</label>
+            <select id="txIncomeSource" class="form-control">
+              <option value="">-- Pilih Sumber --</option>
+              <option value="Gaji / Upah">💼 Gaji / Upah</option>
+              <option value="Freelance / Proyek">🖥️ Freelance / Proyek</option>
+              <option value="Bisnis / Usaha">🏪 Bisnis / Usaha</option>
+              <option value="Investasi / Dividen">📈 Investasi / Dividen</option>
+              <option value="Bonus / THR">🎁 Bonus / THR</option>
+              <option value="Transfer dari Orang Lain">🔁 Transfer dari Orang Lain</option>
+              <option value="Hadiah">🎀 Hadiah</option>
+              <option value="Penjualan Barang">🛍️ Penjualan Barang</option>
+              <option value="Lainnya">✨ Lainnya</option>
+            </select>
+          </div>
+
+          <!-- EXPENSE ONLY: Bayar ke / Merchant -->
+          <div class="form-group" id="expenseMerchantGroup">
+            <label for="txMerchant">🏪 Bayar ke / Beli di Mana? <span style="color: var(--text-dim); font-weight: 400;">(opsional)</span></label>
+            <input type="text" id="txMerchant" class="form-control" placeholder="Contoh: Indomaret, GoFood, Alfamart...">
+          </div>
+
+          <!-- Jumlah -->
           <div class="form-group">
-            <label for="txAmount">Jumlah (Rp)</label>
+            <label for="txAmount" id="txAmountLabel">Jumlah (Rp)</label>
             <input type="number" id="txAmount" class="form-control" placeholder="0" min="1" step="1000" required>
           </div>
 
+          <!-- Kategori -->
           <div class="form-group">
             <label for="txCategory">Kategori Transaksi</label>
             <select id="txCategory" class="form-control" required></select>
           </div>
 
+          <!-- Tanggal & Jam -->
           <div class="form-group">
             <label for="txDatetime">Tanggal & Jam Transaksi</label>
             <input type="datetime-local" id="txDatetime" class="form-control" required>
           </div>
 
+          <!-- Catatan Tambahan -->
           <div class="form-group">
-            <label for="txNote">Catatan Tambahan (Opsional)</label>
-            <input type="text" id="txNote" class="form-control" placeholder="Contoh: Pembayaran QRIS...">
+            <label for="txNote">Catatan Tambahan <span style="color: var(--text-dim); font-weight: 400;">(opsional)</span></label>
+            <input type="text" id="txNote" class="form-control" placeholder="Contoh: Bayar QRIS, split bareng teman...">
           </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close="txModal">Batal</button>
-          <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Simpan Transaksi</button>
+          <button type="submit" class="btn btn-primary" id="txSubmitBtn"><i data-lucide="check"></i> Simpan</button>
         </div>
       </form>
     </div>
   </div>
+
 
   <!-- MODAL: Tambah Kategori -->
   <div id="categoryModal" class="modal-overlay">
