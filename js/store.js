@@ -191,24 +191,24 @@ class Store {
     return this.currentUser;
   }
 
-  loginWithPin(emailOrPin, pinOnly = '') {
-    let user;
-    if (pinOnly) {
-      // Login with Email + PIN
-      const cleanEmail = emailOrPin.trim().toLowerCase();
-      const cleanPin = pinOnly.trim();
-      user = this.users.find(u => u.email === cleanEmail && u.pin === cleanPin);
-    } else {
-      // Login with PIN directly across registered users
-      const cleanPin = emailOrPin.trim();
-      user = this.users.find(u => u.pin === cleanPin);
+  loginWithPin(email, pin) {
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+    const cleanPin   = pin ? pin.trim() : '';
+
+    if (!cleanEmail || !cleanPin) {
+      throw new Error('Email dan PIN wajib diisi.');
     }
 
-    if (!user) {
-      throw new Error('PIN atau email tidak cocok. Pastikan PIN sudah dibuat pada profil.');
+    const userByEmail = this.users.find(u => u.email === cleanEmail);
+    if (!userByEmail) {
+      throw new Error(`Email "${cleanEmail}" belum terdaftar di browser ini. Silakan klik "Daftar" terlebih dahulu.`);
     }
 
-    this.currentUser = { ...user };
+    if (userByEmail.pin !== cleanPin) {
+      throw new Error('PIN salah. Pastikan kamu memasukkan PIN yang benar.');
+    }
+
+    this.currentUser = { ...userByEmail };
     this.saveCurrentUser();
     return this.currentUser;
   }
