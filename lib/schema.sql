@@ -40,6 +40,7 @@ CREATE TABLE public.rooms (
   code       TEXT PRIMARY KEY,
   host_email TEXT,
   name       TEXT NOT NULL,
+  members    TEXT DEFAULT '[]',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

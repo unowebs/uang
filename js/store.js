@@ -147,12 +147,26 @@ async function fetchCloudRooms() {
     });
     if (res.ok) {
       const data = await res.json();
-      return data.map(r => ({
-        code: r.code,
-        name: r.name,
-        hostEmail: r.host_email,
-        members: [r.host_email]
-      }));
+      return data.map(r => {
+        let membersList = [r.host_email];
+        if (r.members) {
+          try {
+            membersList = typeof r.members === 'string' ? JSON.parse(r.members) : r.members;
+          } catch (e) {
+            membersList = [r.host_email];
+          }
+        }
+        if (!Array.isArray(membersList)) membersList = [r.host_email];
+        if (r.host_email && !membersList.includes(r.host_email)) {
+          membersList.unshift(r.host_email);
+        }
+        return {
+          code: r.code,
+          name: r.name,
+          hostEmail: r.host_email,
+          members: membersList
+        };
+      });
     }
   } catch (e) {
     console.warn('Supabase fetch rooms error:', e);
@@ -173,7 +187,8 @@ async function saveRoomToCloud(room) {
       body: JSON.stringify({
         code: room.code,
         name: room.name,
-        host_email: room.hostEmail
+        host_email: room.hostEmail,
+        members: JSON.stringify(room.members || [room.hostEmail])
       })
     });
     if (!res.ok) {
@@ -577,6 +592,7 @@ class Store {
     if (!room.members.includes(email)) {
       room.members.push(email);
       localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(this.rooms));
+      await saveRoomToCloud(room);
     }
 
     this.activeRoom = cleanCode;

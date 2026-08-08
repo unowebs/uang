@@ -97,10 +97,13 @@
 
     <!-- Room Banner -->
     <div class="room-banner mb-5">
-      <div class="room-info">
+      <div class="room-info" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <i data-lucide="users" style="color:var(--primary)"></i>
         <span>Mode:</span>
         <span id="roomBadge" class="room-badge">Pribadi</span>
+        <button id="btnRoomMembers" class="btn btn-ghost btn-sm hidden" style="font-size:12px;padding:4px 10px;color:var(--primary);border:1px solid var(--primary-lt);">
+          <i data-lucide="users"></i> Lihat Anggota
+        </button>
       </div>
       <div class="room-actions">
         <button id="btnCreateRoom" class="btn btn-ghost btn-sm"><i data-lucide="plus-square"></i> Buat Room</button>
@@ -687,6 +690,23 @@
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-close="modalSpreadsheet">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Anggota Room -->
+<div id="modalRoomMembers" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="users" style="color:var(--primary)"></i> Anggota & Pemilik Room</h3>
+      <button class="modal-close" data-close="modalRoomMembers">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px;">
+      <div id="roomMembersTitle" style="font-weight:800;font-size:15px;margin-bottom:14px;color:var(--text-1);"></div>
+      <div id="roomMembersList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close="modalRoomMembers">Tutup</button>
     </div>
   </div>
 </div>

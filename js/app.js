@@ -287,12 +287,15 @@ function updateAuthUI() {
 function updateRoomUI() {
   const badge = document.getElementById('roomBadge');
   const leave = document.getElementById('btnLeaveRoom');
+  const btnMem = document.getElementById('btnRoomMembers');
   if (store.activeRoom) {
     if (badge) badge.textContent = `Room: ${store.activeRoom}`;
     if (leave) leave.classList.remove('hidden');
+    if (btnMem) btnMem.classList.remove('hidden');
   } else {
     if (badge) badge.textContent = 'Pribadi';
     if (leave) leave.classList.add('hidden');
+    if (btnMem) btnMem.classList.add('hidden');
   }
 }
 
@@ -1049,11 +1052,66 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     }
   });
 
+  // ── Room Members Modal ──
+  document.getElementById('btnRoomMembers')?.addEventListener('click', () => {
+    if (!store.activeRoom) return;
+    const room = store.rooms.find(r => r.code === store.activeRoom);
+    if (!room) { alert('Data Room tidak ditemukan.'); return; }
+
+    const titleEl = document.getElementById('roomMembersTitle');
+    const listEl  = document.getElementById('roomMembersList');
+
+    if (titleEl) {
+      titleEl.innerHTML = `🏠 Room: <span style="color:var(--primary);">${room.name}</span> <span style="font-size:12px;background:var(--bg-input);padding:3px 8px;border-radius:6px;border:1px solid var(--border);">[${room.code}]</span>`;
+    }
+
+    const hostEmail = (room.hostEmail || '').toLowerCase();
+    const members = Array.isArray(room.members) && room.members.length > 0 ? room.members : [hostEmail];
+
+    if (listEl) {
+      listEl.innerHTML = members.map(mEmail => {
+        const cleanM = (mEmail || '').toLowerCase();
+        const userObj = store.users.find(u => u.email === cleanM);
+        const name = userObj ? userObj.name : cleanM;
+        const avatar = userObj ? userObj.avatar : null;
+        const isHost = cleanM === hostEmail;
+
+        const avatarHtml = avatar
+          ? `<img src="${avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--primary-lt);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">${name.charAt(0).toUpperCase()}</div>`;
+
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              ${avatarHtml}
+              <div>
+                <div style="font-weight:700;font-size:14px;color:var(--text-1);">${name}</div>
+                <div style="font-size:12px;color:var(--text-3);">${cleanM}</div>
+              </div>
+            </div>
+            ${isHost ? `
+              <span style="font-size:12px;font-weight:700;background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 10px;border-radius:99px;border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;gap:4px;">
+                👑 Pemilik Room (Host)
+              </span>
+            ` : `
+              <span style="font-size:12px;font-weight:600;background:var(--bg-input);color:var(--text-2);padding:4px 10px;border-radius:99px;border:1px solid var(--border);">
+                👤 Anggota
+              </span>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    openModal('modalRoomMembers');
+  });
+
   // ── Recap / spreadsheet ──
   document.getElementById('btnRecap')?.addEventListener('click', () => {
     const from = document.getElementById('recapFrom').value;
     const to   = document.getElementById('recapTo').value;
-    const txs  = store.getFilteredTransactions('custom', from, to, 'all', 'all', '');
+    const timeframe = (from || to) ? 'custom' : state.timeframe;
+    const txs  = store.getFilteredTransactions(timeframe, from, to, 'all', 'all', '');
     renderSheet(txs);
     toast(`Rekap berhasil (${txs.length} transaksi)`, '📊');
   });
@@ -1061,7 +1119,8 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   document.getElementById('btnDownloadPDF')?.addEventListener('click', () => {
     const from = document.getElementById('recapFrom').value;
     const to   = document.getElementById('recapTo').value;
-    const txs  = store.getFilteredTransactions(from ? 'custom' : state.timeframe, from, to, 'all', 'all', '');
+    const timeframe = (from || to) ? 'custom' : state.timeframe;
+    const txs  = store.getFilteredTransactions(timeframe, from, to, 'all', 'all', '');
     if (!txs.length) { alert('Tidak ada data untuk diekspor.'); return; }
     exportRecapToPDF(txs, from, to);
     toast('Menyiapkan PDF…', '📄');
@@ -1073,7 +1132,8 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   document.getElementById('btnExportSpreadsheet')?.addEventListener('click', () => {
     const from = document.getElementById('recapFrom').value;
     const to   = document.getElementById('recapTo').value;
-    const txs  = store.getFilteredTransactions(from ? 'custom' : state.timeframe, from, to, 'all', 'all', '');
+    const timeframe = (from || to) ? 'custom' : state.timeframe;
+    const txs  = store.getFilteredTransactions(timeframe, from, to, 'all', 'all', '');
     if (!txs.length) { alert('Tidak ada data transaksi untuk ditampilkan.'); return; }
 
     const { tsvText, htmlTable } = store.generateSpreadsheetData(txs);
