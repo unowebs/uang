@@ -167,6 +167,14 @@ class Store {
         }
       });
       this.saveUsers();
+
+      if (this.currentUser) {
+        const updatedCurrent = this.users.find(u => u.email === this.currentUser.email);
+        if (updatedCurrent) {
+          this.currentUser = { ...updatedCurrent };
+          this.saveCurrentUser();
+        }
+      }
     }
   }
 
