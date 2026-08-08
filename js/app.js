@@ -522,6 +522,27 @@ function bindEvents() {
     ov.addEventListener('click', e => { if (e.target === ov) closeModal(ov.id); });
   });
 
+  // ── Eye icon toggle for Password & PIN fields ──
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-eye-toggle');
+    if (!btn) return;
+    const wrap = btn.closest('.input-wrap');
+    if (!wrap) return;
+    const input = wrap.querySelector('input');
+    if (!input) return;
+
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.innerHTML = '<i data-lucide="eye-off" style="width:16px;height:16px;"></i>';
+      btn.title = 'Sembunyikan';
+    } else {
+      input.type = 'password';
+      btn.innerHTML = '<i data-lucide="eye" style="width:16px;height:16px;"></i>';
+      btn.title = 'Lihat';
+    }
+    lucide.createIcons();
+  });
+
   // ── Theme toggle ──
   document.getElementById('btnTheme')?.addEventListener('click', () => {
     const cur  = document.documentElement.getAttribute('data-theme') || 'dark';

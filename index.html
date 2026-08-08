@@ -330,7 +330,10 @@
         </div>
         <div class="form-group">
           <label for="loginPass">Password</label>
-          <input type="password" id="loginPass" class="input" placeholder="••••••••" required>
+          <div class="input-wrap">
+            <input type="password" id="loginPass" class="input" placeholder="••••••••" required>
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan Password"><i data-lucide="eye"></i></button>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -349,7 +352,10 @@
         </div>
         <div class="form-group">
           <label for="loginPinVal">PIN Keamanan (4-6 Angka)</label>
-          <input type="password" id="loginPinVal" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*" required>
+          <div class="input-wrap">
+            <input type="password" id="loginPinVal" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*" required>
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan PIN"><i data-lucide="eye"></i></button>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -381,12 +387,18 @@
         </div>
         <div class="form-group">
           <label for="regPass">Password</label>
-          <input type="password" id="regPass" class="input" placeholder="Min. 6 karakter" minlength="6" required>
+          <div class="input-wrap">
+            <input type="password" id="regPass" class="input" placeholder="Min. 6 karakter" minlength="6" required>
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan Password"><i data-lucide="eye"></i></button>
+          </div>
         </div>
         <div class="form-group">
           <label for="regPin">PIN Keamanan (4-6 Angka)</label>
-          <input type="password" id="regPin" class="input" placeholder="Contoh: 123456" maxlength="6" inputmode="numeric" pattern="\d*">
-          <span class="text-muted text-sm">Bisa digunakan untuk login cepat dengan PIN.</span>
+          <div class="input-wrap">
+            <input type="password" id="regPin" class="input" placeholder="Contoh: 123456" maxlength="6" inputmode="numeric" pattern="\d*">
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan PIN"><i data-lucide="eye"></i></button>
+          </div>
+          <span class="text-muted text-sm" style="display:block;margin-top:4px;">Bisa digunakan untuk login cepat dengan PIN.</span>
         </div>
       </div>
       <div class="modal-foot">
@@ -436,12 +448,18 @@
 
         <div class="form-group">
           <label for="profPass">Password</label>
-          <input type="password" id="profPass" class="input" placeholder="••••••••" required>
+          <div class="input-wrap">
+            <input type="password" id="profPass" class="input" placeholder="••••••••" required>
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan Password"><i data-lucide="eye"></i></button>
+          </div>
         </div>
 
         <div class="form-group">
           <label for="profPin">PIN Keamanan (4-6 Angka)</label>
-          <input type="password" id="profPin" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*">
+          <div class="input-wrap">
+            <input type="password" id="profPin" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*">
+            <button type="button" class="btn-eye-toggle" title="Lihat/Sembunyikan PIN"><i data-lucide="eye"></i></button>
+          </div>
         </div>
       </div>
       <div class="modal-foot">

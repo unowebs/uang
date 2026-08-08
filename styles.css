@@ -1092,6 +1092,35 @@ body {
   box-shadow: 0 0 0 3px var(--primary-lt);
 }
 
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.input-wrap .input {
+  padding-right: 42px;
+}
+.btn-eye-toggle {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  transition: color 0.2s, background 0.2s;
+}
+.btn-eye-toggle:hover {
+  color: var(--primary);
+  background: var(--primary-lt);
+}
+
+
 .type-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
