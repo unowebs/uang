@@ -130,7 +130,16 @@ class Store {
     if (!data) {
       return null;
     }
-    return JSON.parse(data);
+    try {
+      const user = JSON.parse(data);
+      if (user && (user.email === 'demo@fintrack.id' || user.name === 'User Demo')) {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+        return null;
+      }
+      return user;
+    } catch (e) {
+      return null;
+    }
   }
 
   registerUser(name, email, password) {
@@ -235,9 +244,7 @@ class Store {
   loadTransactions() {
     const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (!data) {
-      const initial = generateInitialTransactions();
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(initial));
-      return initial;
+      return [];
     }
     return JSON.parse(data);
   }
