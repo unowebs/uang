@@ -615,24 +615,66 @@ function bindEvents() {
     } catch (err) { showErr('registerError', err.message); }
   });
 
+function compressImage(file, maxDimension = 200, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => reject(new Error('Gagal memproses file foto.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Gagal membaca file foto.'));
+    reader.readAsDataURL(file);
+  });
+}
+
   // ── User Profile Edit & Photo Upload ──
-  document.getElementById('profilePhotoInput')?.addEventListener('change', e => {
+  document.getElementById('profilePhotoInput')?.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      state.pendingAvatarBase64 = ev.target.result;
+    try {
+      // Compress avatar to ~15KB to avoid localStorage QuotaExceededError
+      const compressedBase64 = await compressImage(file, 200, 0.75);
+      state.pendingAvatarBase64 = compressedBase64;
+
       const avatarImg = document.getElementById('profileAvatarImg');
       const avatarTxt = document.getElementById('profileAvatarText');
       const btnRemove = document.getElementById('btnRemoveAvatar');
 
-      avatarImg.src = ev.target.result;
+      avatarImg.src = compressedBase64;
       avatarImg.classList.remove('hidden');
       avatarTxt.classList.add('hidden');
       btnRemove.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      alert(err.message);
+    }
   });
 
   document.getElementById('btnRemoveAvatar')?.addEventListener('click', () => {

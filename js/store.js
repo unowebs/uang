@@ -100,7 +100,15 @@ class Store {
   }
 
   saveUsers() {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
+    } catch (e) {
+      console.error('LocalStorage quota error:', e);
+      if (e.name === 'QuotaExceededError' || e.code === 22) {
+        throw new Error('Penyimpanan browser penuh. Foto telah otomatis dikompresi, silakan coba simpan kembali.');
+      }
+      throw e;
+    }
   }
 
   loadCurrentUser() {
@@ -119,10 +127,14 @@ class Store {
   }
 
   saveCurrentUser() {
-    if (this.currentUser) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    try {
+      if (this.currentUser) {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      }
+    } catch (e) {
+      console.error('LocalStorage quota error on currentUser:', e);
     }
   }
 
