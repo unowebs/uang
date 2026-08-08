@@ -14,7 +14,7 @@ const STORAGE_KEYS = {
 };
 
 const SUPABASE_URL = 'https://wpxlgjeqoashomtucibg.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndweGxnamVxb2FzaG9tdHVjaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNDg4NDgsImV4cCI6MjA1NTYyNDg0OH0.s7_G35Yp9H-iR-XN44o-bJ7hXpXnJ2E-31y80lS15Q8';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndweGxnamVxb2FzaG9tdHVjaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxODM5NzAsImV4cCI6MjEwMTc1OTk3MH0.-EfnnwMZfawqEYWLX2Iv_9rF6sGEGmiad5sGNKMLKmU';
 
 export const EXCHANGE_RATES = {
   IDR: { symbol: 'Rp', rate: 1, name: 'Rupiah (Rp)' },
