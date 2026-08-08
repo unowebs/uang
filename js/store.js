@@ -36,72 +36,8 @@ export function getCurrentDateTimeLocalString(dateObj = new Date()) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-function generateInitialTransactions(userEmail = 'demo@fintrack.id') {
-  const now = new Date();
-  const formatDateOffset = (daysAgo, hoursAgo = 0) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - daysAgo);
-    d.setHours(d.getHours() - hoursAgo);
-    return d.toISOString();
-  };
-
-  return [
-    {
-      id: 'tx-1',
-      userEmail: userEmail,
-      roomCode: null,
-      title: 'Gaji Bulanan Utama',
-      amount: 9500000,
-      type: 'income',
-      categoryId: 'cat-gaji',
-      datetime: formatDateOffset(1, 4),
-      note: 'Gaji masuk rekening'
-    },
-    {
-      id: 'tx-2',
-      userEmail: userEmail,
-      roomCode: null,
-      title: 'Makan Siang & Kopi',
-      amount: 45000,
-      type: 'expense',
-      categoryId: 'cat-makanan',
-      datetime: formatDateOffset(0, 2),
-      note: 'Kafe Kopi Susu'
-    },
-    {
-      id: 'tx-3',
-      userEmail: userEmail,
-      roomCode: null,
-      title: 'Isi Bensin Pertamax',
-      amount: 200000,
-      type: 'expense',
-      categoryId: 'cat-transport',
-      datetime: formatDateOffset(2, 3),
-      note: 'Bensin penuh'
-    },
-    {
-      id: 'tx-4',
-      userEmail: userEmail,
-      roomCode: null,
-      title: 'Supermarket Superindo',
-      amount: 720000,
-      type: 'expense',
-      categoryId: 'cat-belanja',
-      datetime: formatDateOffset(3, 5),
-      note: 'Beli stok bulanan'
-    },
-    {
-      id: 'tx-5',
-      userEmail: userEmail,
-      roomCode: null,
-      title: 'Tagihan Listrik & Wi-Fi',
-      amount: 520000,
-      type: 'expense',
-      categoryId: 'cat-tagihan',
-      datetime: formatDateOffset(5, 8),
-      note: 'Tagihan rutin bulanan'
-    }
-  ];
+function generateInitialTransactions() {
+  return [];
 }
 
 class Store {
@@ -246,7 +182,20 @@ class Store {
     if (!data) {
       return [];
     }
-    return JSON.parse(data);
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        // Filter out dummy transactions from previous local storage state
+        const cleaned = parsed.filter(t => t.userEmail !== 'demo@fintrack.id' && !['tx-1','tx-2','tx-3','tx-4','tx-5'].includes(t.id));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   saveTransactions() {
