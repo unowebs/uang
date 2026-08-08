@@ -1,617 +1,550 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinTrack ID - Aplikasi Manajemen Keuangan & Kolaborasi Room</title>
-  <meta name="description" content="Aplikasi manajemen keuangan harian, bulanan, tahunan dengan autentikasi, kolaborasi room code, kustomisasi grafik dengan foto, spreadsheet interaktif, dan ekspor PDF.">
+  <title>FinTrack ID — Manajemen Keuangan Pribadi</title>
+  <meta name="description" content="Catat, pantau, dan rayakan keuanganmu setiap hari. Gratis, simpel, dan menyenangkan!">
 
-  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Custom Styles -->
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <div class="app-container">
-    <!-- Header Navbar with Auth Profile & Global Actions -->
-    <header class="app-header">
-      <div class="brand">
-        <div class="brand-icon">
-          <i data-lucide="wallet"></i>
+<div class="app-wrap">
+
+  <!-- ══════════════════════════════════════
+       HEADER / NAVBAR
+  ══════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">💰</div>
+      <span class="brand-name">Fin<span>Track</span> ID</span>
+    </div>
+
+    <div class="header-right">
+      <!-- Theme toggle -->
+      <button id="btnTheme" class="btn-icon" title="Ganti tema">☀️</button>
+
+      <!-- Guest -->
+      <div id="guestBtns" style="display:flex; gap:8px;">
+        <button id="btnLogin"    class="btn btn-ghost btn-sm"><i data-lucide="log-in"></i> Masuk</button>
+        <button id="btnRegister" class="btn btn-primary btn-sm"><i data-lucide="user-plus"></i> Daftar</button>
+      </div>
+
+      <!-- Logged in -->
+      <div id="userArea" style="display:none; align-items:center; gap:8px;">
+        <div class="user-chip">
+          <div class="user-avatar" id="navAvatar">U</div>
+          <span class="user-name" id="navName">Pengguna</span>
         </div>
-        <div class="brand-text">
-          <h1>FinTrack ID</h1>
-          <p>Keuangan Harian, Kolaborasi Room & Laporan PDF</p>
+        <div id="authActions" style="display:flex; gap:6px;">
+          <button id="btnNewCat" class="btn btn-ghost btn-sm"><i data-lucide="folder-plus"></i> Kategori</button>
+          <button id="btnNewTx"  class="btn btn-primary btn-sm"><i data-lucide="plus"></i> Catat</button>
+        </div>
+        <button id="btnLogout" class="btn btn-sm" style="background:var(--red-lt);color:var(--red);border:none;">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════
+       LANDING VIEW
+  ══════════════════════════════════════ -->
+  <div id="viewLanding" class="landing">
+    <div class="landing-hero">
+      <div class="landing-badge">✨ Gratis · Simpel · Menyenangkan</div>
+      <h1 class="landing-title">Keuanganmu,<br>lebih <span style="background:linear-gradient(135deg,#7c3aed,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">menyenangkan</span></h1>
+      <p class="landing-sub">Catat pemasukan & pengeluaran, dapat emoji selamat saat nabung 🤑, dan pantau keuangan bareng teman lewat Kode Room.</p>
+      <div class="landing-btns">
+        <button id="landingLogin"    class="btn btn-ghost btn-lg"><i data-lucide="log-in"></i> Masuk</button>
+        <button id="landingRegister" class="btn btn-primary btn-lg"><i data-lucide="user-plus"></i> Daftar Gratis</button>
+      </div>
+    </div>
+
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><i data-lucide="calendar"></i></div>
+        <h3>Filter Fleksibel</h3>
+        <p>Harian, mingguan, bulanan, tahunan, atau rentang tanggal kustom sesukamu.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i data-lucide="users"></i></div>
+        <h3>Kode Room Kolaborasi</h3>
+        <p>Pantau keuangan bersama keluarga atau teman dalam satu room yang sama.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i data-lucide="pie-chart"></i></div>
+        <h3>Grafik Interaktif</h3>
+        <p>Visualisasi keuangan dengan berbagai jenis grafik dan foto kustom.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i data-lucide="file-spreadsheet"></i></div>
+        <h3>Rekap & Ekspor</h3>
+        <p>Spreadsheet interaktif dan laporan PDF yang bisa diunduh kapan saja.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       DASHBOARD VIEW
+  ══════════════════════════════════════ -->
+  <div id="viewDashboard" class="dashboard hidden">
+
+    <!-- Room Banner -->
+    <div class="room-banner mb-5">
+      <div class="room-info">
+        <i data-lucide="users" style="color:var(--primary)"></i>
+        <span>Mode:</span>
+        <span id="roomBadge" class="room-badge">Pribadi</span>
+      </div>
+      <div class="room-actions">
+        <button id="btnCreateRoom" class="btn btn-ghost btn-sm"><i data-lucide="plus-square"></i> Buat Room</button>
+        <button id="btnJoinRoom"   class="btn btn-ghost btn-sm"><i data-lucide="log-in"></i> Gabung Room</button>
+        <button id="btnLeaveRoom"  class="btn btn-sm hidden" style="color:var(--red);background:var(--red-lt);border:none;"><i data-lucide="log-out"></i> Keluar Room</button>
+      </div>
+    </div>
+
+    <!-- Timeframe Tabs -->
+    <div class="timeframe-row mb-5">
+      <div class="tabs-wrap">
+        <button class="tab" data-tf="daily">Hari Ini</button>
+        <button class="tab" data-tf="weekly">Minggu Ini</button>
+        <button class="tab active" data-tf="monthly">Bulan Ini</button>
+        <button class="tab" data-tf="yearly">Tahun Ini</button>
+        <button class="tab" data-tf="all">Semua</button>
+        <button class="tab" data-tf="custom">Kustom</button>
+      </div>
+      <div id="customRange" class="custom-range hidden">
+        <input type="date" id="dateStart" aria-label="Dari tanggal">
+        <span>s/d</span>
+        <input type="date" id="dateEnd" aria-label="Sampai tanggal">
+        <button id="btnApplyRange" class="btn btn-primary btn-sm">Terapkan</button>
+      </div>
+      <div id="periodLabel" class="period-label">Bulan Ini</div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="metrics-row mb-5">
+      <div class="metric net">
+        <div class="metric-top">
+          <div class="metric-label">Saldo Bersih</div>
+          <div class="metric-icon"><i data-lucide="scale"></i></div>
+        </div>
+        <div id="mNet" class="metric-value">Rp 0</div>
+        <div class="metric-sub">Pemasukan − Pengeluaran</div>
+      </div>
+      <div class="metric income">
+        <div class="metric-top">
+          <div class="metric-label">Total Pemasukan</div>
+          <div class="metric-icon"><i data-lucide="trending-up"></i></div>
+        </div>
+        <div id="mIncome" class="metric-value">Rp 0</div>
+        <div class="metric-sub">Periode ini</div>
+      </div>
+      <div class="metric expense">
+        <div class="metric-top">
+          <div class="metric-label">Total Pengeluaran</div>
+          <div class="metric-icon"><i data-lucide="trending-down"></i></div>
+        </div>
+        <div id="mExpense" class="metric-value">Rp 0</div>
+        <div class="metric-sub">Periode ini</div>
+      </div>
+      <div class="metric avg">
+        <div class="metric-top">
+          <div class="metric-label">Rata-rata/Hari</div>
+          <div class="metric-icon"><i data-lucide="bar-chart-2"></i></div>
+        </div>
+        <div id="mAvg" class="metric-value">Rp 0</div>
+        <div class="metric-sub">Pengeluaran per hari aktif</div>
+      </div>
+    </div>
+
+    <!-- Chart + Budget -->
+    <div class="two-col mb-4">
+      <!-- Chart Card -->
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title"><i data-lucide="pie-chart"></i> Grafik Keuangan</h2>
+          <div class="tab-toggle">
+            <button id="tabCategory" class="tab-pill active">Kategori</button>
+            <button id="tabTrend"    class="tab-pill">Tren</button>
+          </div>
+        </div>
+        <div class="chart-toolbar">
+          <label for="chartType" class="text-muted text-sm font-bold" style="display:flex;align-items:center;gap:6px;">
+            <i data-lucide="settings-2" style="width:14px;height:14px;"></i> Tipe:
+          </label>
+          <select id="chartType" class="chart-select">
+            <option value="doughnut">Donut / Pie</option>
+            <option value="bar">Batang (Bar)</option>
+            <option value="line">Garis (Line)</option>
+            <option value="scatter">Titik (Scatter)</option>
+            <option value="radar">Radar</option>
+          </select>
+          <label for="chartPhoto" class="btn btn-ghost btn-sm" style="cursor:pointer;margin-left:auto;">
+            <i data-lucide="image"></i> Foto Kustom
+          </label>
+          <input type="file" id="chartPhoto" accept="image/*" class="hidden">
+          <button id="btnResetPhoto" class="btn btn-ghost btn-sm hidden">✕ Reset</button>
+        </div>
+        <div class="chart-area" id="chartCategory">
+          <canvas id="categoryChartCanvas"></canvas>
+          <div id="noCategoryDataMsg" class="empty hidden">
+            <i data-lucide="inbox" style="width:36px;height:36px;"></i>
+            <p>Belum ada data pengeluaran.</p>
+          </div>
+        </div>
+        <div class="chart-area hidden" id="chartTrend">
+          <canvas id="trendChartCanvas"></canvas>
         </div>
       </div>
 
-      <div class="header-actions">
-        <!-- Theme Toggle -->
-        <button id="btnThemeToggle" class="theme-toggle-btn" title="Ganti tema">☀️</button>
-
-        <!-- Auth User Profile status (Logged in only) -->
-        <div id="authUserProfile" class="user-nav-profile" style="display: none;">
-          <div class="user-avatar" id="userNavAvatar">U</div>
-          <span id="userNavName" style="font-weight: 600;">Pengguna</span>
-          <button id="btnLogout" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; margin-left: 4px;">Logout</button>
+      <!-- Budget Card -->
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title"><i data-lucide="target"></i> Anggaran Kategori</h2>
+          <button id="btnAddCatQ" class="btn btn-ghost btn-sm">+ Tambah</button>
         </div>
-
-        <!-- Guest buttons: Login & Registrasi only (Guest mode) -->
-        <div id="authGuestButtons" style="display: flex; gap: 8px;">
-          <button id="btnOpenLoginModal" class="btn btn-secondary btn-sm"><i data-lucide="log-in"></i> Login</button>
-          <button id="btnOpenRegisterModal" class="btn btn-primary btn-sm"><i data-lucide="user-plus"></i> Registrasi</button>
-        </div>
-
-        <!-- Authenticated actions (+ Kategori & + Catat Transaksi only when logged in) -->
-        <div id="authenticatedActions" style="display: none; gap: 8px;">
-          <button id="btnOpenCategoryModal" class="btn btn-secondary btn-sm">
-            <i data-lucide="folder-plus"></i> + Kategori
-          </button>
-          <button id="btnOpenTxModal" class="btn btn-primary btn-sm">
-            <i data-lucide="plus-circle"></i> + Catat Transaksi
-          </button>
-        </div>
-      </div>
-    </header>
-
-
-    <!-- LANDING PAGE VIEW (Shown on initial visit before logging in) -->
-    <div id="landingView" class="landing-section">
-      <div class="landing-hero">
-        <div class="landing-hero-badge">
-          <i data-lucide="sparkles"></i> ✨ Catat, Pantau & Rayakan Keuanganmu!
-        </div>
-        <h1 class="landing-title">Halo! Keuanganmu<br>Aman di Sini 🎉</h1>
-        <p class="landing-subtitle">
-          Catat pemasukan & pengeluaranmu dengan cara yang menyenangkan! Dapat emoji selamat saat nabung 🤑, notifikasi lucu saat belanja 😅, dan pantau keuangan bareng teman lewat Kode Room.
-        </p>
-
-        <div class="landing-cta-buttons">
-          <button id="landingBtnLogin" class="btn btn-secondary btn-lg">
-            <i data-lucide="log-in"></i> Masuk (Login)
-          </button>
-          <button id="landingBtnRegister" class="btn btn-primary btn-lg">
-            <i data-lucide="user-plus"></i> Daftar Akun Gratis
-          </button>
-        </div>
-      </div>
-
-      <!-- Landing Features Grid -->
-      <div class="landing-features-grid">
-        <div class="feature-card">
-          <div class="feature-icon"><i data-lucide="calendar"></i></div>
-          <h3>Manajemen Fleksibel</h3>
-          <p>Filter transaksi harian, bulanan, tahunan, atau kustom rentang tanggal secara instan.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon"><i data-lucide="users"></i></div>
-          <h3>Kolaborasi Kode Room</h3>
-          <p>Buat kode room dan undang kerabat untuk memantau aktivitas keuangan bersama secara real-time.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon"><i data-lucide="pie-chart"></i></div>
-          <h3>Grafik & Foto Kustom</h3>
-          <p>Pilih tipe grafik (Pie, Bar, Line, Radar) dan unggah foto lokal sebagai tekstur grafik.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon"><i data-lucide="file-spreadsheet"></i></div>
-          <h3>Spreadsheet & Laporan PDF</h3>
-          <p>Hasilkan rekapan tabel spreadsheet interaktif dan unduh laporan PDF resmi dalam 1 klik.</p>
+        <div class="card-body">
+          <div id="budgetList" class="budget-list">
+            <!-- dynamic -->
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- MAIN DASHBOARD VIEW (Shown when logged in or after entering app) -->
-    <div id="mainDashboardView" class="main-dashboard-section" style="display: none;">
-      <!-- Room Collaboration Banner (Fitur Kode Room) -->
-      <section class="room-bar">
-        <div class="room-info">
-          <i data-lucide="users" style="color: var(--primary);"></i>
-          <span>Konteks Keuangan:</span>
-          <span id="activeRoomBadge" class="room-badge">Keuangan Pribadi</span>
+    <!-- Recap / Spreadsheet -->
+    <div class="card mb-4">
+      <div class="card-head">
+        <h2 class="card-title"><i data-lucide="file-spreadsheet"></i> Rekap & Ekspor</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button id="btnDownloadPDF" class="btn btn-ghost btn-sm"><i data-lucide="file-text"></i> PDF</button>
+          <button id="btnExportCSV"   class="btn btn-ghost btn-sm"><i data-lucide="download"></i> Excel/CSV</button>
         </div>
-
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <button id="btnOpenCreateRoomModal" class="btn btn-secondary btn-sm">
-            <i data-lucide="plus-square"></i> Buat Kode Room
-          </button>
-          <button id="btnOpenJoinRoomModal" class="btn btn-secondary btn-sm">
-            <i data-lucide="log-in"></i> Gabung Room
-          </button>
-          <button id="btnLeaveRoom" class="btn btn-secondary btn-sm" style="display: none; color: var(--expense);">
-            <i data-lucide="log-out"></i> Keluar Room
-          </button>
-        </div>
-      </section>
-
-      <!-- Timeframe Selection Bar -->
-      <section class="timeframe-bar">
-        <div class="timeframe-tabs">
-          <button class="time-tab" data-timeframe="daily">Hari Ini</button>
-          <button class="time-tab" data-timeframe="weekly">Minggu Ini</button>
-          <button class="time-tab active" data-timeframe="monthly">Bulan Ini</button>
-          <button class="time-tab" data-timeframe="yearly">Tahun Ini</button>
-          <button class="time-tab" data-timeframe="all">Semua</button>
-          <button class="time-tab" data-timeframe="custom">Kustom Date</button>
-        </div>
-
-        <div id="customDateRangeContainer" class="custom-date-range hidden" style="display: none;">
-          <input type="date" id="startDateInput" aria-label="Tanggal Mulai">
-          <span style="color: var(--text-dim); font-size: 13px;">s/d</span>
-          <input type="date" id="endDateInput" aria-label="Tanggal Akhir">
-          <button id="btnApplyCustomDate" class="btn btn-primary btn-sm">Terapkan</button>
-        </div>
-
-        <div id="activePeriodLabel" class="active-period-badge">
-          Periode: Bulan Ini
-        </div>
-      </section>
-
-      <!-- Overview Metrics Grid -->
-      <section class="metrics-grid">
-        <div class="metric-card net">
-          <div class="metric-header">
-            <span class="metric-title">Saldo Bersih</span>
-            <div class="metric-icon"><i data-lucide="scale"></i></div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="text-sm text-muted font-bold mb-1" style="margin-bottom:4px;">Dari Tanggal</div>
+            <input type="date" id="recapFrom" class="input" style="width:auto;">
           </div>
-          <div id="metricNetBalance" class="metric-value">Rp 0</div>
-          <div class="metric-subtitle">Selisih Pemasukan & Pengeluaran</div>
+          <div>
+            <div class="text-sm text-muted font-bold" style="margin-bottom:4px;">Sampai Tanggal</div>
+            <input type="date" id="recapTo" class="input" style="width:auto;">
+          </div>
+          <button id="btnRecap" class="btn btn-primary btn-sm"><i data-lucide="table"></i> Tampilkan</button>
         </div>
-
-        <div class="metric-card income">
-          <div class="metric-header">
-            <span class="metric-title">Total Pemasukan</span>
-            <div class="metric-icon"><i data-lucide="trending-up"></i></div>
-          </div>
-          <div id="metricTotalIncome" class="metric-value">Rp 0</div>
-          <div class="metric-subtitle">Total pemasukan periode ini</div>
-        </div>
-
-        <div class="metric-card expense">
-          <div class="metric-header">
-            <span class="metric-title">Total Pengeluaran</span>
-            <div class="metric-icon"><i data-lucide="trending-down"></i></div>
-          </div>
-          <div id="metricTotalExpense" class="metric-value">Rp 0</div>
-          <div class="metric-subtitle">Total pengeluaran periode ini</div>
-        </div>
-
-        <div class="metric-card average">
-          <div class="metric-header">
-            <span class="metric-title">Rata-rata Pengeluaran</span>
-            <div class="metric-icon"><i data-lucide="bar-chart-2"></i></div>
-          </div>
-          <div id="metricDailyAvg" class="metric-value">Rp 0</div>
-          <div class="metric-subtitle">Per hari aktif dalam periode</div>
-        </div>
-      </section>
-
-      <!-- Visual Dashboard Analytics with Custom Chart Selector & Photo Upload -->
-      <section class="dashboard-grid">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title"><i data-lucide="pie-chart"></i> Visualisasi Grafik Keuangan</h2>
-            <div class="chart-tab-toggles" style="display: flex; gap: 6px;">
-              <button id="tabBtnDonut" class="btn btn-secondary btn-sm active" style="padding: 4px 10px; font-size: 11px;">Kategori</button>
-              <button id="tabBtnTrend" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px;">Tren</button>
-            </div>
-          </div>
-
-          <!-- Custom Chart Options & Image Uploader -->
-          <div class="chart-customizer-bar">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
-              <i data-lucide="settings-2" style="width: 14px; height: 14px;"></i>
-              <span>Tipe Grafik:</span>
-              <select id="chartTypeSelect" class="filter-select" style="padding: 4px 10px; font-size: 12px;">
-                <option value="doughnut">Pie / Donut</option>
-                <option value="bar">Batang (Bar)</option>
-                <option value="line">Garis (Line)</option>
-                <option value="scatter">Titik / Point</option>
-                <option value="radar">Radar</option>
-              </select>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-left: auto;">
-              <label for="chartImageUpload" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; cursor: pointer;">
-                <i data-lucide="image"></i> Custom Foto Grafik
-              </label>
-              <input type="file" id="chartImageUpload" accept="image/*" style="display: none;">
-              <button id="btnResetChartImage" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; display: none;" title="Reset Foto">
-                &times; Reset Foto
-              </button>
-            </div>
-          </div>
-
-          <div id="donutChartContainer" class="chart-wrapper">
-            <canvas id="categoryChartCanvas"></canvas>
-            <div id="noCategoryDataMsg" class="empty-state" style="display: none; height: 100%; justify-content: center; flex-direction: column; align-items: center;">
-              <i data-lucide="inbox"></i>
-              <p>Belum ada data pengeluaran pada periode ini.</p>
-            </div>
-          </div>
-
-          <div id="trendChartContainer" class="chart-wrapper" style="display: none;">
-            <canvas id="trendChartCanvas"></canvas>
-          </div>
-        </div>
-
-        <!-- Right Column: Budget Limits -->
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title"><i data-lucide="target"></i> Batas Anggaran Kategori</h2>
-            <button id="btnAddCategoryQuick" class="btn btn-secondary btn-sm" style="font-size: 11px;">+ Tambah</button>
-          </div>
-
-          <div id="budgetListContainer" class="budget-list">
-            <!-- Dynamic budget items -->
-          </div>
-        </div>
-      </section>
-
-      <!-- SECTION: Rekapan Data Keuangan & Interactive Spreadsheet & PDF Download -->
-      <section class="card" style="margin-bottom: 28px;">
-        <div class="card-header">
-          <h2 class="card-title"><i data-lucide="file-spreadsheet"></i> Rekapan Keuangan & Export Spreadsheet / PDF</h2>
-        </div>
-
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 13px; color: var(--text-muted);">Dari Tanggal:</label>
-            <input type="date" id="recapStartDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 13px; color: var(--text-muted);">Sampai Tanggal:</label>
-            <input type="date" id="recapEndDate" class="form-control" style="padding: 6px 12px; font-size: 13px;">
-          </div>
-
-          <button id="btnGenerateRecap" class="btn btn-primary btn-sm">
-            <i data-lucide="table"></i> Tampilkan Rekap Spreadsheet
-          </button>
-
-          <button id="btnDownloadPDF" class="btn btn-secondary btn-sm" style="margin-left: auto;">
-            <i data-lucide="file-text"></i> Simpan / Download PDF
-          </button>
-
-          <button id="btnExportCSVRecap" class="btn btn-secondary btn-sm">
-            <i data-lucide="download"></i> Download Excel / CSV
-          </button>
-        </div>
-
-        <!-- Interactive Spreadsheet Grid View -->
-        <div class="spreadsheet-container">
-          <table class="spreadsheet-table">
+        <div class="sheet-wrap">
+          <table class="sheet-table">
             <thead>
               <tr>
-                <th style="width: 40px;">#</th>
-                <th>Tanggal & Jam</th>
-                <th>Keterangan / Transaksi</th>
+                <th>#</th>
+                <th>Tanggal</th>
+                <th>Keterangan</th>
                 <th>Kategori</th>
                 <th>Jenis</th>
-                <th style="text-align: right;">Jumlah (Rp)</th>
+                <th style="text-align:right;">Jumlah (Rp)</th>
               </tr>
             </thead>
-            <tbody id="spreadsheetBody">
-              <!-- Dynamic Spreadsheet Content -->
+            <tbody id="sheetBody">
+              <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-3);">Pilih rentang tanggal lalu klik Tampilkan.</td></tr>
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- Transaction History Table -->
-      <section class="card transactions-card">
-        <div class="card-header">
-          <h2 class="card-title"><i data-lucide="receipt"></i> Riwayat & Catatan Transaksi</h2>
-          <div id="txCountBadge" style="font-size: 12px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: var(--radius-full);">
-            0 Transaksi
+    <!-- Transaction History -->
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title"><i data-lucide="receipt"></i> Riwayat Transaksi</h2>
+        <div id="txCount" class="count-badge">0 transaksi</div>
+      </div>
+      <div class="controls-row">
+        <div class="search-wrap">
+          <i data-lucide="search"></i>
+          <input type="text" id="searchInput" placeholder="Cari transaksi…" aria-label="Cari">
+        </div>
+        <select id="filterCat"  class="sel" aria-label="Filter kategori">
+          <option value="all">Semua Kategori</option>
+        </select>
+        <select id="filterType" class="sel" aria-label="Filter jenis">
+          <option value="all">Semua Jenis</option>
+          <option value="income">Pemasukan</option>
+          <option value="expense">Pengeluaran</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Keterangan</th>
+              <th>Kategori</th>
+              <th>Tanggal</th>
+              <th style="text-align:right;">Jumlah</th>
+              <th style="text-align:right;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyTx" class="empty hidden">
+        <i data-lucide="search-x" style="width:36px;height:36px;"></i>
+        <p>Tidak ada transaksi yang ditemukan.</p>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /app-wrap -->
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+
+<!-- Login -->
+<div id="modalLogin" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="log-in" style="color:var(--primary)"></i> Masuk ke Akun</h3>
+      <button class="modal-close" data-close="modalLogin">✕</button>
+    </div>
+    <form id="loginForm">
+      <div class="modal-body">
+        <div id="loginError" class="form-error">⚠️ <span id="loginErrMsg"></span></div>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" class="input" placeholder="kamu@email.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Password</label>
+          <input type="password" id="loginPass" class="input" placeholder="••••••••" required>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalLogin">Batal</button>
+        <button type="submit" class="btn btn-primary">Masuk →</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Register -->
+<div id="modalRegister" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="user-plus" style="color:var(--primary)"></i> Buat Akun Baru</h3>
+      <button class="modal-close" data-close="modalRegister">✕</button>
+    </div>
+    <form id="registerForm">
+      <div class="modal-body">
+        <div id="registerError" class="form-error">⚠️ <span id="registerErrMsg"></span></div>
+        <div class="form-group">
+          <label for="regName">Nama Lengkap</label>
+          <input type="text" id="regName" class="input" placeholder="Nama kamu" autocomplete="name" required>
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" class="input" placeholder="kamu@email.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="regPass">Password</label>
+          <input type="password" id="regPass" class="input" placeholder="Min. 6 karakter" minlength="6" required>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalRegister">Batal</button>
+        <button type="submit" class="btn btn-primary">Daftar →</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Catat Transaksi -->
+<div id="modalTx" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="txModalTitle"><i data-lucide="plus-circle" style="color:var(--primary)"></i> Catat Transaksi</h3>
+      <button class="modal-close" data-close="modalTx">✕</button>
+    </div>
+    <form id="txForm">
+      <div class="modal-body">
+        <!-- Type toggle -->
+        <div class="form-group">
+          <label>Jenis Transaksi</label>
+          <div class="type-grid">
+            <div class="type-opt">
+              <input type="radio" id="typeOut" name="txType" value="expense" checked>
+              <label for="typeOut" class="type-label out-label"><i data-lucide="arrow-down-right"></i> Pengeluaran</label>
+            </div>
+            <div class="type-opt">
+              <input type="radio" id="typeIn" name="txType" value="income">
+              <label for="typeIn" class="type-label in-label"><i data-lucide="arrow-up-right"></i> Pemasukan</label>
+            </div>
           </div>
         </div>
 
-        <div class="table-controls">
-          <div class="search-input-wrap">
-            <i data-lucide="search"></i>
-            <input type="text" id="searchInput" placeholder="Cari transaksi (contoh: Nasi Goreng, Bensin...)" aria-label="Cari transaksi">
-          </div>
+        <div class="form-group">
+          <label for="txTitle" id="txTitleLbl">Untuk Apa?</label>
+          <input type="text" id="txTitle" class="input" placeholder="Contoh: Makan siang, bensin…" required>
+        </div>
 
-          <select id="categoryFilterSelect" class="filter-select" aria-label="Filter Kategori">
-            <option value="all">Semua Kategori</option>
+        <!-- Income source (shown for income) -->
+        <div class="form-group hidden" id="sourceGroup">
+          <label for="txSource">💰 Pemasukan dari Mana?</label>
+          <select id="txSource" class="input">
+            <option value="">— Pilih sumber —</option>
+            <option value="Gaji / Upah">💼 Gaji / Upah</option>
+            <option value="Freelance / Proyek">🖥️ Freelance / Proyek</option>
+            <option value="Bisnis / Usaha">🏪 Bisnis / Usaha</option>
+            <option value="Investasi / Dividen">📈 Investasi / Dividen</option>
+            <option value="Bonus / THR">🎁 Bonus / THR</option>
+            <option value="Transfer dari Orang Lain">🔁 Transfer dari Orang Lain</option>
+            <option value="Hadiah">🎀 Hadiah</option>
+            <option value="Penjualan Barang">🛍️ Penjualan Barang</option>
+            <option value="Lainnya">✨ Lainnya</option>
           </select>
+        </div>
 
-          <select id="typeFilterSelect" class="filter-select" aria-label="Filter Jenis Transaksi">
-            <option value="all">Semua Jenis</option>
-            <option value="income">Pemasukan</option>
+        <!-- Expense merchant (shown for expense) -->
+        <div class="form-group" id="merchantGroup">
+          <label for="txMerchant">🏪 Beli / Bayar di Mana? <span class="text-muted">(opsional)</span></label>
+          <input type="text" id="txMerchant" class="input" placeholder="Indomaret, GoFood, Alfamart…">
+        </div>
+
+        <div class="form-group">
+          <label for="txAmount" id="txAmountLbl">💸 Jumlah (Rp)</label>
+          <input type="number" id="txAmount" class="input" placeholder="0" min="1" step="1000" required>
+        </div>
+
+        <div class="form-group">
+          <label for="txCat">Kategori</label>
+          <select id="txCat" class="input" required></select>
+        </div>
+
+        <div class="form-group">
+          <label for="txDatetime">Tanggal & Jam</label>
+          <input type="datetime-local" id="txDatetime" class="input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="txNote">Catatan <span class="text-muted">(opsional)</span></label>
+          <input type="text" id="txNote" class="input" placeholder="Bayar QRIS, split, dll…">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalTx">Batal</button>
+        <button type="submit" id="txSubmit" class="btn btn-primary">Simpan ✓</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tambah Kategori -->
+<div id="modalCat" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="folder-plus" style="color:var(--primary)"></i> Tambah Kategori</h3>
+      <button class="modal-close" data-close="modalCat">✕</button>
+    </div>
+    <form id="catForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="catName">Nama Kategori</label>
+          <input type="text" id="catName" class="input" placeholder="Contoh: Hobi, Pulsa…" required>
+        </div>
+        <div class="form-group">
+          <label for="catType">Jenis</label>
+          <select id="catType" class="input">
             <option value="expense">Pengeluaran</option>
+            <option value="income">Pemasukan</option>
           </select>
         </div>
-
-        <div class="table-responsive">
-          <table class="tx-table">
-            <thead>
-              <tr>
-                <th>Transaksi / Keterangan</th>
-                <th>Kategori</th>
-                <th>Tanggal & Jam (Editable)</th>
-                <th>Jumlah (Rp)</th>
-                <th style="text-align: right;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="txTableBody">
-              <!-- Dynamic Rows -->
-            </tbody>
-          </table>
+        <div class="form-group">
+          <label for="catBudget">Batas Anggaran Bulanan (Rp) — opsional</label>
+          <input type="number" id="catBudget" class="input" placeholder="0" min="0" step="50000">
         </div>
-
-        <div id="emptyTableState" class="empty-state" style="display: none;">
-          <i data-lucide="search-x"></i>
-          <p>Tidak ada transaksi yang cocok dengan filter atau pencarian Anda.</p>
+        <div class="form-group">
+          <label>Warna</label>
+          <div class="color-swatches" id="colorSwatches">
+            <div class="swatch picked" data-color="#f43f5e" style="background:#f43f5e"></div>
+            <div class="swatch" data-color="#7c3aed" style="background:#7c3aed"></div>
+            <div class="swatch" data-color="#3b82f6" style="background:#3b82f6"></div>
+            <div class="swatch" data-color="#10b981" style="background:#10b981"></div>
+            <div class="swatch" data-color="#f59e0b" style="background:#f59e0b"></div>
+            <div class="swatch" data-color="#ec4899" style="background:#ec4899"></div>
+            <div class="swatch" data-color="#06b6d4" style="background:#06b6d4"></div>
+          </div>
+          <input type="hidden" id="catColor" value="#f43f5e">
         </div>
-      </section>
-    </div>
-  </div>
-
-  <div id="txModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="txModalTitle"><i data-lucide="plus-circle" style="color: var(--primary);"></i> Catat Transaksi</h3>
-        <button class="modal-close" data-close="txModal">&times;</button>
       </div>
-      <form id="txForm">
-        <div class="modal-body">
-
-          <!-- Jenis Transaksi -->
-          <div class="form-group">
-            <label>Jenis Transaksi</label>
-            <div class="type-toggle-group">
-              <div class="type-radio-btn">
-                <input type="radio" id="typeExpense" name="txType" value="expense" checked>
-                <label for="typeExpense" class="type-label expense-label">
-                  <i data-lucide="arrow-down-right"></i> Pengeluaran
-                </label>
-              </div>
-              <div class="type-radio-btn">
-                <input type="radio" id="typeIncome" name="txType" value="income">
-                <label for="typeIncome" class="type-label income-label">
-                  <i data-lucide="arrow-up-right"></i> Pemasukan
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- Label berubah sesuai tipe -->
-          <div class="form-group">
-            <label for="txTitle" id="txTitleLabel">Untuk Apa? (Keterangan)</label>
-            <input type="text" id="txTitle" class="form-control" placeholder="Contoh: Makan Siang, Bensin..." required>
-          </div>
-
-          <!-- INCOME ONLY: Sumber Pemasukan -->
-          <div class="form-group" id="incomeSourceGroup" style="display: none;">
-            <label for="txIncomeSource">💰 Pemasukan dari Mana?</label>
-            <select id="txIncomeSource" class="form-control">
-              <option value="">-- Pilih Sumber --</option>
-              <option value="Gaji / Upah">💼 Gaji / Upah</option>
-              <option value="Freelance / Proyek">🖥️ Freelance / Proyek</option>
-              <option value="Bisnis / Usaha">🏪 Bisnis / Usaha</option>
-              <option value="Investasi / Dividen">📈 Investasi / Dividen</option>
-              <option value="Bonus / THR">🎁 Bonus / THR</option>
-              <option value="Transfer dari Orang Lain">🔁 Transfer dari Orang Lain</option>
-              <option value="Hadiah">🎀 Hadiah</option>
-              <option value="Penjualan Barang">🛍️ Penjualan Barang</option>
-              <option value="Lainnya">✨ Lainnya</option>
-            </select>
-          </div>
-
-          <!-- EXPENSE ONLY: Bayar ke / Merchant -->
-          <div class="form-group" id="expenseMerchantGroup">
-            <label for="txMerchant">🏪 Bayar ke / Beli di Mana? <span style="color: var(--text-dim); font-weight: 400;">(opsional)</span></label>
-            <input type="text" id="txMerchant" class="form-control" placeholder="Contoh: Indomaret, GoFood, Alfamart...">
-          </div>
-
-          <!-- Jumlah -->
-          <div class="form-group">
-            <label for="txAmount" id="txAmountLabel">Jumlah (Rp)</label>
-            <input type="number" id="txAmount" class="form-control" placeholder="0" min="1" step="1000" required>
-          </div>
-
-          <!-- Kategori -->
-          <div class="form-group">
-            <label for="txCategory">Kategori Transaksi</label>
-            <select id="txCategory" class="form-control" required></select>
-          </div>
-
-          <!-- Tanggal & Jam -->
-          <div class="form-group">
-            <label for="txDatetime">Tanggal & Jam Transaksi</label>
-            <input type="datetime-local" id="txDatetime" class="form-control" required>
-          </div>
-
-          <!-- Catatan Tambahan -->
-          <div class="form-group">
-            <label for="txNote">Catatan Tambahan <span style="color: var(--text-dim); font-weight: 400;">(opsional)</span></label>
-            <input type="text" id="txNote" class="form-control" placeholder="Contoh: Bayar QRIS, split bareng teman...">
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="txModal">Batal</button>
-          <button type="submit" class="btn btn-primary" id="txSubmitBtn"><i data-lucide="check"></i> Simpan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-
-  <!-- MODAL: Tambah Kategori -->
-  <div id="categoryModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i data-lucide="folder-plus" style="color: var(--primary);"></i> Tambah Kategori Kustom</h3>
-        <button class="modal-close" data-close="categoryModal">&times;</button>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalCat">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan ✓</button>
       </div>
-      <form id="categoryForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="catName">Nama Kategori</label>
-            <input type="text" id="catName" class="form-control" placeholder="Contoh: Hobi, Pulsa..." required>
-          </div>
-
-          <div class="form-group">
-            <label for="catType">Jenis Kategori</label>
-            <select id="catType" class="form-control" required>
-              <option value="expense">Pengeluaran</option>
-              <option value="income">Pemasukan</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="catBudget">Batas Anggaran Bulanan (Rp) - Opsional</label>
-            <input type="number" id="catBudget" class="form-control" placeholder="0" min="0" step="50000">
-          </div>
-
-          <div class="form-group">
-            <label>Warna Aksen</label>
-            <div class="color-options" id="colorPickerOptions">
-              <div class="color-radio selected" data-color="#f43f5e" style="background: #f43f5e;"></div>
-              <div class="color-radio" data-color="#3b82f6" style="background: #3b82f6;"></div>
-              <div class="color-radio" data-color="#10b981" style="background: #10b981;"></div>
-              <div class="color-radio" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
-              <div class="color-radio" data-color="#f59e0b" style="background: #f59e0b;"></div>
-            </div>
-            <input type="hidden" id="catColor" value="#f43f5e">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="categoryModal">Batal</button>
-          <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Simpan Kategori</button>
-        </div>
-      </form>
-    </div>
+    </form>
   </div>
+</div>
 
-  <!-- MODAL: Auth Login -->
-  <div id="loginModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i data-lucide="log-in" style="color: var(--primary);"></i> Login Pengguna</h3>
-        <button class="modal-close" data-close="loginModal">&times;</button>
+<!-- Buat Room -->
+<div id="modalCreateRoom" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="plus-square" style="color:var(--primary)"></i> Buat Kode Room</h3>
+      <button class="modal-close" data-close="modalCreateRoom">✕</button>
+    </div>
+    <form id="createRoomForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="roomName">Nama Room</label>
+          <input type="text" id="roomName" class="input" placeholder="Keuangan Bersama, Usaha…" required>
+        </div>
+        <div class="form-group">
+          <label for="roomCode">Kode Unik Room</label>
+          <input type="text" id="roomCode" class="input" placeholder="ROOM-UTAMA-2026" style="text-transform:uppercase" required>
+        </div>
       </div>
-      <form id="loginForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="loginEmail">Email</label>
-            <input type="email" id="loginEmail" class="form-control" placeholder="nama@email.com" required>
-          </div>
-          <div class="form-group">
-            <label for="loginPassword">Password</label>
-            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="loginModal">Batal</button>
-          <button type="submit" class="btn btn-primary">Masuk</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Auth Register -->
-  <div id="registerModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i data-lucide="user-plus" style="color: var(--primary);"></i> Registrasi Akun Baru</h3>
-        <button class="modal-close" data-close="registerModal">&times;</button>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalCreateRoom">Batal</button>
+        <button type="submit" class="btn btn-primary">Buat Room</button>
       </div>
-      <form id="registerForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="regName">Nama Lengkap</label>
-            <input type="text" id="regName" class="form-control" placeholder="Contoh: Budi Santoso" required>
-          </div>
-          <div class="form-group">
-            <label for="regEmail">Email</label>
-            <input type="email" id="regEmail" class="form-control" placeholder="nama@email.com" required>
-          </div>
-          <div class="form-group">
-            <label for="regPassword">Password</label>
-            <input type="password" id="regPassword" class="form-control" placeholder="Minimal 6 karakter" minlength="6" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="registerModal">Batal</button>
-          <button type="submit" class="btn btn-primary">Daftar Akun</button>
-        </div>
-      </form>
-    </div>
+    </form>
   </div>
+</div>
 
-  <!-- MODAL: Buat Kode Room Kolaborasi -->
-  <div id="createRoomModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i data-lucide="plus-square" style="color: var(--primary);"></i> Buat Kode Room Kolaborasi</h3>
-        <button class="modal-close" data-close="createRoomModal">&times;</button>
+<!-- Gabung Room -->
+<div id="modalJoinRoom" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="log-in" style="color:var(--primary)"></i> Gabung Room</h3>
+      <button class="modal-close" data-close="modalJoinRoom">✕</button>
+    </div>
+    <form id="joinRoomForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="joinCode">Kode Room</label>
+          <input type="text" id="joinCode" class="input" placeholder="ROOM-UTAMA-2026" style="text-transform:uppercase" required>
+        </div>
       </div>
-      <form id="createRoomForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="roomName">Nama Room Keuangan</label>
-            <input type="text" id="roomName" class="form-control" placeholder="Contoh: Keuangan Usaha Bersama" required>
-          </div>
-          <div class="form-group">
-            <label for="roomCodeInput">Kode Room Unik</label>
-            <input type="text" id="roomCodeInput" class="form-control" placeholder="Contoh: KEUANGAN-USAHA-2026" required style="text-transform: uppercase;">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="createRoomModal">Batal</button>
-          <button type="submit" class="btn btn-primary">Buat Room</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Gabung Kode Room -->
-  <div id="joinRoomModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i data-lucide="log-in" style="color: var(--primary);"></i> Gabung Kode Room Kolaborasi</h3>
-        <button class="modal-close" data-close="joinRoomModal">&times;</button>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalJoinRoom">Batal</button>
+        <button type="submit" class="btn btn-primary">Gabung</button>
       </div>
-      <form id="joinRoomForm">
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="joinCodeInput">Masukkan Kode Room</label>
-            <input type="text" id="joinCodeInput" class="form-control" placeholder="Contoh: ROOM-UTAMA" required style="text-transform: uppercase;">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="joinRoomModal">Batal</button>
-          <button type="submit" class="btn btn-primary">Gabung Room</button>
-        </div>
-      </form>
-    </div>
+    </form>
   </div>
+</div>
 
-  <!-- Toast Notification Container -->
-  <div id="toastContainer" class="toast-container"></div>
+<!-- Toast container -->
+<div id="toastRack" class="toast-rack"></div>
 
-  <!-- Emoji Celebration Popup Container -->
-  <div id="emojiPopupContainer"></div>
+<!-- Emoji popup container -->
+<div id="emojiContainer"></div>
 
-  <!-- Application Logic Modules -->
-  <script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 
 </body>
 </html>
