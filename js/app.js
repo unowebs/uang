@@ -19,6 +19,16 @@ const appState = {
   recapEnd: ''
 };
 
+// Theme Management
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('btnThemeToggle');
+  if (btn) {
+    btn.textContent = theme === 'light' ? '🌙' : '☀️';
+    btn.title = theme === 'light' ? 'Ganti ke Dark Mode' : 'Ganti ke Light Mode';
+  }
+}
+
 // Toast Notifications
 function showToast(message, iconName = 'check-circle', type = '') {
   const container = document.getElementById('toastContainer');
@@ -755,6 +765,17 @@ function initEventListeners() {
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   updateCategoryDropdowns();
+
+  // --- Theme Toggle Init ---
+  const savedTheme = localStorage.getItem('fintrack-theme') || 'dark';
+  applyTheme(savedTheme);
+
+  document.getElementById('btnThemeToggle')?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem('fintrack-theme', next);
+  });
 
   if (store.chartType) {
     const sel = document.getElementById('chartTypeSelect');
