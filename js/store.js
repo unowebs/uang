@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FinTrack - Data Store with Auth, PIN, Multi-Currency, Rooms & Recaps
+   FinTrack - Data Store with Auth, PIN, Cloud Sync, Multi-Currency & Rooms
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -12,6 +12,9 @@ const STORAGE_KEYS = {
   CHART_IMAGE: 'fintrack_chart_image_v2',
   CHART_TYPE: 'fintrack_chart_type_v2'
 };
+
+const SUPABASE_URL = 'https://wpxlgjeqoashomtucibg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndweGxnamVxb2FzaG9tdHVjaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNDg4NDgsImV4cCI6MjA1NTYyNDg0OH0.s7_G35Yp9H-iR-XN44o-bJ7hXpXnJ2E-31y80lS15Q8';
 
 export const EXCHANGE_RATES = {
   IDR: { symbol: 'Rp', rate: 1, name: 'Rupiah (Rp)' },
@@ -81,6 +84,54 @@ export function formatDateTime(isoString) {
   return { dateStr, timeStr };
 }
 
+// Cloud API Sync Helpers (Supabase REST API)
+async function fetchCloudUsers() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.map(p => ({
+        name: p.full_name || p.name || 'User',
+        email: (p.email || '').toLowerCase(),
+        password: p.password || p.pass || '',
+        pin: p.pin || '123456',
+        avatar: p.avatar || null
+      }));
+    }
+  } catch (e) {
+    console.warn('Supabase Cloud Sync offline or unreachable:', e);
+  }
+  return [];
+}
+
+async function saveUserToCloud(user) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        email: user.email,
+        full_name: user.name,
+        password: user.password,
+        pin: user.pin,
+        avatar: user.avatar
+      })
+    });
+  } catch (e) {
+    console.warn('Could not sync user to Supabase Cloud:', e);
+  }
+}
+
 class Store {
   constructor() {
     this.users = this.loadUsers();
@@ -91,6 +142,24 @@ class Store {
     this.activeRoom = this.loadActiveRoom();
     this.chartType = localStorage.getItem(STORAGE_KEYS.CHART_TYPE) || 'doughnut';
     this.chartImagePattern = localStorage.getItem(STORAGE_KEYS.CHART_IMAGE) || null;
+
+    // Initial background sync from cloud for multi-browser support
+    this.syncUsersFromCloud();
+  }
+
+  async syncUsersFromCloud() {
+    const cloudUsers = await fetchCloudUsers();
+    if (cloudUsers && cloudUsers.length > 0) {
+      cloudUsers.forEach(cu => {
+        const idx = this.users.findIndex(u => u.email === cu.email);
+        if (idx !== -1) {
+          this.users[idx] = { ...this.users[idx], ...cu };
+        } else {
+          this.users.push(cu);
+        }
+      });
+      this.saveUsers();
+    }
   }
 
   // --- Auth & Profile Handlers ---
@@ -138,7 +207,7 @@ class Store {
     }
   }
 
-  registerUser(name, email, password, pin = '') {
+  async registerUser(name, email, password, pin = '') {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
     const cleanName  = name.trim();
@@ -153,6 +222,9 @@ class Store {
     if (cleanPin && (cleanPin.length < 4 || cleanPin.length > 6 || !/^\d+$/.test(cleanPin))) {
       throw new Error('PIN harus berupa 4-6 angka.');
     }
+
+    // Check cloud & local
+    await this.syncUsersFromCloud();
 
     const existing = this.users.find(u => u.email === cleanEmail);
     if (existing) {
@@ -169,16 +241,26 @@ class Store {
     this.users.push(newUser);
     this.saveUsers();
 
+    // Sync to Cloud DB so other browsers can log in instantly
+    saveUserToCloud(newUser);
+
     this.currentUser = { ...newUser };
     this.saveCurrentUser();
     return this.currentUser;
   }
 
-  loginUser(email, password) {
+  async loginUser(email, password) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
 
-    const user = this.users.find(u => u.email === cleanEmail);
+    let user = this.users.find(u => u.email === cleanEmail);
+
+    // If not found in local memory, sync from Cloud DB!
+    if (!user) {
+      await this.syncUsersFromCloud();
+      user = this.users.find(u => u.email === cleanEmail);
+    }
+
     if (!user) {
       throw new Error('Email tidak ditemukan. Pastikan kamu sudah mendaftar.');
     }
@@ -191,7 +273,7 @@ class Store {
     return this.currentUser;
   }
 
-  loginWithPin(email, pin) {
+  async loginWithPin(email, pin) {
     const cleanEmail = email ? email.trim().toLowerCase() : '';
     const cleanPin   = pin ? pin.trim() : '';
 
@@ -199,9 +281,16 @@ class Store {
       throw new Error('Email dan PIN wajib diisi.');
     }
 
-    const userByEmail = this.users.find(u => u.email === cleanEmail);
+    let userByEmail = this.users.find(u => u.email === cleanEmail);
+
+    // If not found in local memory, sync from Cloud DB!
     if (!userByEmail) {
-      throw new Error(`Email "${cleanEmail}" belum terdaftar di browser ini. Silakan klik "Daftar" terlebih dahulu.`);
+      await this.syncUsersFromCloud();
+      userByEmail = this.users.find(u => u.email === cleanEmail);
+    }
+
+    if (!userByEmail) {
+      throw new Error(`Email "${cleanEmail}" belum terdaftar. Silakan klik "Daftar" terlebih dahulu.`);
     }
 
     if (userByEmail.pin !== cleanPin) {
@@ -213,7 +302,7 @@ class Store {
     return this.currentUser;
   }
 
-  updateUserProfile({ name, email, password, pin, avatar }) {
+  async updateUserProfile({ name, email, password, pin, avatar }) {
     if (!this.currentUser) throw new Error('Pengguna belum login.');
 
     const cleanEmail = email ? email.trim().toLowerCase() : this.currentUser.email;
@@ -231,7 +320,6 @@ class Store {
       throw new Error('PIN harus berupa 4-6 angka.');
     }
 
-    // Update in users array
     const index = this.users.findIndex(u => u.email === this.currentUser.email);
     const updatedUser = {
       name: cleanName,
@@ -247,6 +335,9 @@ class Store {
       this.users.push(updatedUser);
     }
     this.saveUsers();
+
+    // Sync to Cloud DB
+    saveUserToCloud(updatedUser);
 
     this.currentUser = { ...updatedUser };
     this.saveCurrentUser();

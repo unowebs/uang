@@ -569,50 +569,68 @@ function bindEvents() {
   });
 
   // ── Auth: Login with Password ──
-  document.getElementById('loginForm')?.addEventListener('submit', e => {
+  document.getElementById('loginForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn = e.currentTarget.querySelector('[type="submit"]');
     const email = document.getElementById('loginEmail').value;
     const pass  = document.getElementById('loginPass').value;
+    if (btn) { btn.disabled = true; btn.textContent = 'Memeriksa…'; }
     try {
-      store.loginUser(email, pass);
+      await store.loginUser(email, pass);
       closeModal('modalLogin');
       document.getElementById('loginForm').reset();
       clearErr('loginError');
       refresh();
       toast(`Selamat datang kembali, ${store.currentUser.name}! 👋`, '✅');
-    } catch (err) { showErr('loginError', err.message); }
+    } catch (err) {
+      showErr('loginError', err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Masuk →'; }
+    }
   });
 
   // ── Auth: Login with PIN ──
-  document.getElementById('loginPinForm')?.addEventListener('submit', e => {
+  document.getElementById('loginPinForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn = e.currentTarget.querySelector('[type="submit"]');
     const email = document.getElementById('loginPinEmail').value;
     const pin   = document.getElementById('loginPinVal').value;
+    if (btn) { btn.disabled = true; btn.textContent = 'Memeriksa…'; }
     try {
-      store.loginWithPin(email, pin);
+      await store.loginWithPin(email, pin);
       closeModal('modalLogin');
       document.getElementById('loginPinForm').reset();
       clearErr('loginPinError');
       refresh();
       toast(`Selamat datang kembali, ${store.currentUser.name}! 🔓`, '🔓');
-    } catch (err) { showErr('loginPinError', err.message); }
+    } catch (err) {
+      showErr('loginPinError', err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Masuk via PIN 🔒'; }
+    }
   });
 
   // ── Auth: Register ──
-  document.getElementById('registerForm')?.addEventListener('submit', e => {
+  document.getElementById('registerForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn = e.currentTarget.querySelector('[type="submit"]');
     const name  = document.getElementById('regName').value;
     const email = document.getElementById('regEmail').value;
     const pass  = document.getElementById('regPass').value;
     const pin   = document.getElementById('regPin').value;
+    if (btn) { btn.disabled = true; btn.textContent = 'Mendaftarkan…'; }
     try {
-      store.registerUser(name, email, pass, pin);
+      await store.registerUser(name, email, pass, pin);
       closeModal('modalRegister');
       document.getElementById('registerForm').reset();
       clearErr('registerError');
       refresh();
       toast(`Akun berhasil dibuat! Selamat datang, ${store.currentUser.name}! 🎉`, '🎊', 't-income');
-    } catch (err) { showErr('registerError', err.message); }
+    } catch (err) {
+      showErr('registerError', err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Daftar →'; }
+    }
   });
 
 function compressImage(file, maxDimension = 200, quality = 0.7) {
@@ -690,15 +708,17 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     btnRemove.classList.add('hidden');
   });
 
-  document.getElementById('profileForm')?.addEventListener('submit', e => {
+  document.getElementById('profileForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const btn   = e.currentTarget.querySelector('[type="submit"]');
     const name  = document.getElementById('profName').value;
     const email = document.getElementById('profEmail').value;
     const pass  = document.getElementById('profPass').value;
     const pin   = document.getElementById('profPin').value;
 
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
     try {
-      store.updateUserProfile({
+      await store.updateUserProfile({
         name,
         email,
         password: pass,
@@ -708,7 +728,11 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
       closeModal('modalProfile');
       refresh();
       toast('Profil & foto berhasil diperbarui! ✨', '👤');
-    } catch (err) { showErr('profileError', err.message); }
+    } catch (err) {
+      showErr('profileError', err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Simpan Profil ✓'; }
+    }
   });
 
   // ── Auth: Logout ──
