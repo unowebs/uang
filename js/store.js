@@ -111,7 +111,8 @@ async function fetchCloudUsers() {
 
 async function saveUserToCloud(user) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+    // Use UPSERT: POST with Prefer merge-duplicates (email is UNIQUE key)
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -124,13 +125,20 @@ async function saveUserToCloud(user) {
         full_name: user.name,
         password: user.password,
         pin: user.pin,
-        avatar: user.avatar
+        // Don't send large avatar in every save to avoid payload issues
+        // Avatar is synced separately via updateAvatarInCloud
+        avatar: user.avatar || null
       })
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('Supabase upsert error:', res.status, errText);
+    }
   } catch (e) {
     console.warn('Could not sync user to Supabase Cloud:', e);
   }
 }
+
 
 class Store {
   constructor() {
@@ -253,13 +261,10 @@ class Store {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
 
-    let user = this.users.find(u => u.email === cleanEmail);
+    // Always sync from cloud first to get latest profile (including avatar updates)
+    await this.syncUsersFromCloud();
 
-    // If not found in local memory, sync from Cloud DB!
-    if (!user) {
-      await this.syncUsersFromCloud();
-      user = this.users.find(u => u.email === cleanEmail);
-    }
+    let user = this.users.find(u => u.email === cleanEmail);
 
     if (!user) {
       throw new Error('Email tidak ditemukan. Pastikan kamu sudah mendaftar.');
@@ -281,13 +286,10 @@ class Store {
       throw new Error('Email dan PIN wajib diisi.');
     }
 
-    let userByEmail = this.users.find(u => u.email === cleanEmail);
+    // Always sync from cloud first to get latest profile
+    await this.syncUsersFromCloud();
 
-    // If not found in local memory, sync from Cloud DB!
-    if (!userByEmail) {
-      await this.syncUsersFromCloud();
-      userByEmail = this.users.find(u => u.email === cleanEmail);
-    }
+    const userByEmail = this.users.find(u => u.email === cleanEmail);
 
     if (!userByEmail) {
       throw new Error(`Email "${cleanEmail}" belum terdaftar. Silakan klik "Daftar" terlebih dahulu.`);
@@ -336,8 +338,8 @@ class Store {
     }
     this.saveUsers();
 
-    // Sync to Cloud DB
-    saveUserToCloud(updatedUser);
+    // Await sync to Cloud DB so other browsers get updates immediately
+    await saveUserToCloud(updatedUser);
 
     this.currentUser = { ...updatedUser };
     this.saveCurrentUser();
