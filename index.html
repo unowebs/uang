@@ -39,7 +39,7 @@
 
       <!-- Logged in -->
       <div id="userArea" style="display:none; align-items:center; gap:8px;">
-        <div class="user-chip">
+        <div class="user-chip" id="userChip" title="Klik untuk edit profil & foto">
           <div class="user-avatar" id="navAvatar">U</div>
           <span class="user-name" id="navName">Pengguna</span>
         </div>
@@ -248,7 +248,7 @@
                 <th>Keterangan</th>
                 <th>Kategori</th>
                 <th>Jenis</th>
-                <th style="text-align:right;">Jumlah (Rp)</th>
+                <th style="text-align:right;">Jumlah</th>
               </tr>
             </thead>
             <tbody id="sheetBody">
@@ -306,13 +306,21 @@
      MODALS
 ══════════════════════════════════════ -->
 
-<!-- Login -->
+<!-- Login (Supports Password or PIN) -->
 <div id="modalLogin" class="overlay">
   <div class="modal">
     <div class="modal-head">
       <h3><i data-lucide="log-in" style="color:var(--primary)"></i> Masuk ke Akun</h3>
       <button class="modal-close" data-close="modalLogin">✕</button>
     </div>
+
+    <!-- Auth Tabs -->
+    <div class="auth-tabs">
+      <button type="button" id="tabLoginPass" class="auth-tab active"><i data-lucide="key" style="width:14px;height:14px;"></i> Password</button>
+      <button type="button" id="tabLoginPin"  class="auth-tab"><i data-lucide="lock" style="width:14px;height:14px;"></i> PIN Keamanan</button>
+    </div>
+
+    <!-- Login with Password -->
     <form id="loginForm">
       <div class="modal-body">
         <div id="loginError" class="form-error">⚠️ <span id="loginErrMsg"></span></div>
@@ -330,6 +338,26 @@
         <button type="submit" class="btn btn-primary">Masuk →</button>
       </div>
     </form>
+
+    <!-- Login with PIN -->
+    <form id="loginPinForm" class="hidden">
+      <div class="modal-body">
+        <div id="loginPinError" class="form-error">⚠️ <span id="loginPinErrMsg"></span></div>
+        <div class="form-group">
+          <label for="loginPinEmail">Email Pengguna</label>
+          <input type="email" id="loginPinEmail" class="input" placeholder="kamu@email.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPinVal">PIN Keamanan (4-6 Angka)</label>
+          <input type="password" id="loginPinVal" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*" required>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalLogin">Batal</button>
+        <button type="submit" class="btn btn-primary">Masuk via PIN 🔒</button>
+      </div>
+    </form>
+
   </div>
 </div>
 
@@ -355,10 +383,70 @@
           <label for="regPass">Password</label>
           <input type="password" id="regPass" class="input" placeholder="Min. 6 karakter" minlength="6" required>
         </div>
+        <div class="form-group">
+          <label for="regPin">PIN Keamanan (4-6 Angka)</label>
+          <input type="password" id="regPin" class="input" placeholder="Contoh: 123456" maxlength="6" inputmode="numeric" pattern="\d*">
+          <span class="text-muted text-sm">Bisa digunakan untuk login cepat dengan PIN.</span>
+        </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-ghost" data-close="modalRegister">Batal</button>
         <button type="submit" class="btn btn-primary">Daftar →</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Profile & Photo Modal -->
+<div id="modalProfile" class="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i data-lucide="user" style="color:var(--primary)"></i> Pengaturan Profil Pengguna</h3>
+      <button class="modal-close" data-close="modalProfile">✕</button>
+    </div>
+    <form id="profileForm">
+      <div class="modal-body">
+        <div id="profileError" class="form-error">⚠️ <span id="profileErrMsg"></span></div>
+
+        <!-- Avatar preview & file upload -->
+        <div class="profile-avatar-wrap mb-4">
+          <div class="profile-avatar-preview" id="profileAvatarPreview">
+            <span id="profileAvatarText">U</span>
+            <img id="profileAvatarImg" src="" alt="Avatar" class="hidden">
+          </div>
+          <div style="flex:1;">
+            <label for="profilePhotoInput" class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-flex;">
+              <i data-lucide="camera"></i> Unggah Foto Profil
+            </label>
+            <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
+            <button type="button" id="btnRemoveAvatar" class="btn btn-sm hidden" style="color:var(--red);background:transparent;border:none;">Hapus Foto</button>
+            <div class="text-muted text-sm" style="margin-top:4px;">Upload foto JPG/PNG untuk mengganti foto profil.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="profName">Nama Lengkap</label>
+          <input type="text" id="profName" class="input" placeholder="Nama Lengkap" required>
+        </div>
+
+        <div class="form-group">
+          <label for="profEmail">Email</label>
+          <input type="email" id="profEmail" class="input" placeholder="email@domain.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="profPass">Password</label>
+          <input type="password" id="profPass" class="input" placeholder="••••••••" required>
+        </div>
+
+        <div class="form-group">
+          <label for="profPin">PIN Keamanan (4-6 Angka)</label>
+          <input type="password" id="profPin" class="input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="\d*">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close="modalProfile">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan Profil ✓</button>
       </div>
     </form>
   </div>
@@ -416,9 +504,23 @@
           <input type="text" id="txMerchant" class="input" placeholder="Indomaret, GoFood, Alfamart…">
         </div>
 
+        <!-- Currency Selector -->
         <div class="form-group">
-          <label for="txAmount" id="txAmountLbl">💸 Jumlah (Rp)</label>
-          <input type="number" id="txAmount" class="input" placeholder="0" min="1" step="1000" required>
+          <label for="txCurrency">🌍 Pilih Mata Uang</label>
+          <select id="txCurrency" class="input">
+            <option value="IDR">🇮🇩 Rupiah (Rp)</option>
+            <option value="USD">🇺🇸 US Dollar ($)</option>
+            <option value="EUR">🇪🇺 Euro (€)</option>
+            <option value="SGD">🇸🇬 Singapore Dollar (S$)</option>
+            <option value="JPY">🇯🇵 Yen (¥)</option>
+            <option value="MYR">🇲🇾 Ringgit (RM)</option>
+          </select>
+        </div>
+
+        <!-- Amount with Auto Format (100.000) -->
+        <div class="form-group">
+          <label for="txAmount" id="txAmountLbl">💸 Jumlah</label>
+          <input type="text" id="txAmount" class="input" placeholder="0" inputmode="numeric" required>
         </div>
 
         <div class="form-group">

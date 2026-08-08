@@ -2,7 +2,7 @@
    FinTrack - PDF & Print Recap Exporter
    ========================================================================== */
 
-import { formatRupiah, store } from './store.js';
+import { formatRupiah, formatMoney, store } from './store.js';
 
 export function exportRecapToPDF(filteredTxs, startDate, endDate) {
   const summary = store.calculateSummary(filteredTxs);
@@ -29,7 +29,7 @@ export function exportRecapToPDF(filteredTxs, startDate, endDate) {
           ${isIncome ? 'Pemasukan' : 'Pengeluaran'}
         </td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold; color: ${isIncome ? '#10b981' : '#f43f5e'};">
-          ${isIncome ? '+' : '-'} ${formatRupiah(tx.amount)}
+          ${isIncome ? '+' : '-'} ${formatMoney(tx.amount, tx.currency || 'IDR')}
         </td>
       </tr>
     `;

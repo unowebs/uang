@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FinTrack - Enhanced Data Store with Auth, Rooms, Supabase Sync & Recaps
+   FinTrack - Data Store with Auth, PIN, Multi-Currency, Rooms & Recaps
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -13,13 +13,22 @@ const STORAGE_KEYS = {
   CHART_TYPE: 'fintrack_chart_type_v2'
 };
 
+export const EXCHANGE_RATES = {
+  IDR: { symbol: 'Rp', rate: 1, name: 'Rupiah (Rp)' },
+  USD: { symbol: '$', rate: 16000, name: 'US Dollar ($)' },
+  EUR: { symbol: '€', rate: 17200, name: 'Euro (€)' },
+  SGD: { symbol: 'S$', rate: 12000, name: 'Singapore Dollar (S$)' },
+  JPY: { symbol: '¥', rate: 105, name: 'Yen (¥)' },
+  MYR: { symbol: 'RM', rate: 3600, name: 'Ringgit (RM)' }
+};
+
 // Default Categories
 const DEFAULT_CATEGORIES = [
   { id: 'cat-makanan', name: 'Makanan & Minuman', type: 'expense', icon: 'utensils', color: '#f43f5e', budget: 2000000 },
   { id: 'cat-transport', name: 'Transportasi', type: 'expense', icon: 'car', color: '#3b82f6', budget: 1000000 },
   { id: 'cat-belanja', name: 'Belanja & Groceries', type: 'expense', icon: 'shopping-bag', color: '#8b5cf6', budget: 1500000 },
   { id: 'cat-tagihan', name: 'Tagihan & Utilitas', type: 'expense', icon: 'zap', color: '#f59e0b', budget: 1200000 },
-  { id: 'cat-hiburan', name: 'Hiburan & Recreasi', type: 'expense', icon: 'film', color: '#ec4899', budget: 800000 },
+  { id: 'cat-hiburan', name: 'Hiburan & Rekreasi', type: 'expense', icon: 'film', color: '#ec4899', budget: 800000 },
   { id: 'cat-kesehatan', name: 'Kesehatan', type: 'expense', icon: 'activity', color: '#06b6d4', budget: 500000 },
   { id: 'cat-gaji', name: 'Gaji Utama', type: 'income', icon: 'wallet', color: '#10b981', budget: 0 },
   { id: 'cat-bonus', name: 'Bonus & Side Job', type: 'income', icon: 'trending-up', color: '#34d399', budget: 0 },
@@ -36,8 +45,40 @@ export function getCurrentDateTimeLocalString(dateObj = new Date()) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-function generateInitialTransactions() {
-  return [];
+export function convertCurrency(amount, fromCurr = 'IDR', toCurr = 'IDR') {
+  if (fromCurr === toCurr) return amount;
+  const fromRate = EXCHANGE_RATES[fromCurr]?.rate || 1;
+  const toRate = EXCHANGE_RATES[toCurr]?.rate || 1;
+  const amountInIdr = amount * fromRate;
+  return amountInIdr / toRate;
+}
+
+export function formatMoney(amount, currency = 'IDR') {
+  const curr = EXCHANGE_RATES[currency] || EXCHANGE_RATES.IDR;
+  const isDecimal = currency !== 'IDR' && currency !== 'JPY';
+  const formatted = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: isDecimal ? 2 : 0,
+    maximumFractionDigits: isDecimal ? 2 : 0
+  }).format(amount);
+  return `${curr.symbol} ${formatted}`;
+}
+
+export function formatRupiah(number) {
+  return formatMoney(number, 'IDR');
+}
+
+export function formatDateTime(isoString) {
+  const date = new Date(isoString);
+  const dateStr = date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+  const timeStr = date.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  return { dateStr, timeStr };
 }
 
 class Store {
@@ -48,24 +89,23 @@ class Store {
     this.transactions = this.loadTransactions();
     this.rooms = this.loadRooms();
     this.activeRoom = this.loadActiveRoom();
-    this.chartType = localStorage.getItem(STORAGE_KEYS.CHART_TYPE) || 'doughnut'; // doughnut, bar, line, scatter, radar
+    this.chartType = localStorage.getItem(STORAGE_KEYS.CHART_TYPE) || 'doughnut';
     this.chartImagePattern = localStorage.getItem(STORAGE_KEYS.CHART_IMAGE) || null;
   }
 
-  // --- Auth Handlers ---
+  // --- Auth & Profile Handlers ---
   loadUsers() {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!data) {
-      return [];
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveUsers() {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
   }
 
   loadCurrentUser() {
     const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    if (!data) {
-      return null;
-    }
+    if (!data) return null;
     try {
       const user = JSON.parse(data);
       if (user && (user.email === 'demo@fintrack.id' || user.name === 'User Demo')) {
@@ -78,29 +118,47 @@ class Store {
     }
   }
 
-  registerUser(name, email, password) {
+  saveCurrentUser() {
+    if (this.currentUser) {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    }
+  }
+
+  registerUser(name, email, password, pin = '') {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
     const cleanName  = name.trim();
+    const cleanPin   = pin.trim();
 
     if (!cleanName || !cleanEmail || !cleanPass) {
-      throw new Error('Semua kolom harus diisi.');
+      throw new Error('Semua kolom wajib diisi.');
     }
     if (cleanPass.length < 6) {
       throw new Error('Password minimal 6 karakter.');
     }
+    if (cleanPin && (cleanPin.length < 4 || cleanPin.length > 6 || !/^\d+$/.test(cleanPin))) {
+      throw new Error('PIN harus berupa 4-6 angka.');
+    }
 
     const existing = this.users.find(u => u.email === cleanEmail);
     if (existing) {
-      throw new Error('Email sudah terdaftar. Silakan login dengan email tersebut.');
+      throw new Error('Email sudah terdaftar. Silakan login.');
     }
 
-    const newUser = { name: cleanName, email: cleanEmail, password: cleanPass };
+    const newUser = {
+      name: cleanName,
+      email: cleanEmail,
+      password: cleanPass,
+      pin: cleanPin || '123456',
+      avatar: null
+    };
     this.users.push(newUser);
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
+    this.saveUsers();
 
-    this.currentUser = { name: newUser.name, email: newUser.email };
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
+    this.currentUser = { ...newUser };
+    this.saveCurrentUser();
     return this.currentUser;
   }
 
@@ -108,16 +166,78 @@ class Store {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass  = password.trim();
 
-    const userByEmail = this.users.find(u => u.email === cleanEmail);
-    if (!userByEmail) {
+    const user = this.users.find(u => u.email === cleanEmail);
+    if (!user) {
       throw new Error('Email tidak ditemukan. Pastikan kamu sudah mendaftar.');
     }
-    if (userByEmail.password !== cleanPass) {
+    if (user.password !== cleanPass) {
       throw new Error('Password salah. Coba lagi dengan hati-hati.');
     }
 
-    this.currentUser = { name: userByEmail.name, email: userByEmail.email };
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
+    this.currentUser = { ...user };
+    this.saveCurrentUser();
+    return this.currentUser;
+  }
+
+  loginWithPin(emailOrPin, pinOnly = '') {
+    let user;
+    if (pinOnly) {
+      // Login with Email + PIN
+      const cleanEmail = emailOrPin.trim().toLowerCase();
+      const cleanPin = pinOnly.trim();
+      user = this.users.find(u => u.email === cleanEmail && u.pin === cleanPin);
+    } else {
+      // Login with PIN directly across registered users
+      const cleanPin = emailOrPin.trim();
+      user = this.users.find(u => u.pin === cleanPin);
+    }
+
+    if (!user) {
+      throw new Error('PIN atau email tidak cocok. Pastikan PIN sudah dibuat pada profil.');
+    }
+
+    this.currentUser = { ...user };
+    this.saveCurrentUser();
+    return this.currentUser;
+  }
+
+  updateUserProfile({ name, email, password, pin, avatar }) {
+    if (!this.currentUser) throw new Error('Pengguna belum login.');
+
+    const cleanEmail = email ? email.trim().toLowerCase() : this.currentUser.email;
+    const cleanName  = name ? name.trim() : this.currentUser.name;
+    const cleanPass  = password ? password.trim() : this.currentUser.password;
+    const cleanPin   = pin ? pin.trim() : (this.currentUser.pin || '123456');
+
+    if (!cleanName || !cleanEmail || !cleanPass) {
+      throw new Error('Nama, Email, dan Password tidak boleh kosong.');
+    }
+    if (cleanPass.length < 6) {
+      throw new Error('Password minimal 6 karakter.');
+    }
+    if (cleanPin && (cleanPin.length < 4 || cleanPin.length > 6 || !/^\d+$/.test(cleanPin))) {
+      throw new Error('PIN harus berupa 4-6 angka.');
+    }
+
+    // Update in users array
+    const index = this.users.findIndex(u => u.email === this.currentUser.email);
+    const updatedUser = {
+      name: cleanName,
+      email: cleanEmail,
+      password: cleanPass,
+      pin: cleanPin,
+      avatar: avatar !== undefined ? avatar : (this.currentUser.avatar || null)
+    };
+
+    if (index !== -1) {
+      this.users[index] = updatedUser;
+    } else {
+      this.users.push(updatedUser);
+    }
+    this.saveUsers();
+
+    this.currentUser = { ...updatedUser };
+    this.saveCurrentUser();
     return this.currentUser;
   }
 
@@ -129,10 +249,7 @@ class Store {
   // --- Rooms Handlers ---
   loadRooms() {
     const data = localStorage.getItem(STORAGE_KEYS.ROOMS);
-    if (!data) {
-      return [];
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   }
 
   loadActiveRoom() {
@@ -198,13 +315,10 @@ class Store {
 
   loadTransactions() {
     const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    if (!data) {
-      return [];
-    }
+    if (!data) return [];
     try {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        // Filter out dummy transactions from previous local storage state
         const cleaned = parsed.filter(t => t.userEmail !== 'demo@fintrack.id' && !['tx-1','tx-2','tx-3','tx-4','tx-5'].includes(t.id));
         if (cleaned.length !== parsed.length) {
           localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(cleaned));
@@ -228,6 +342,7 @@ class Store {
       roomCode: this.activeRoom || null,
       title: tx.title || 'Transaksi Baru',
       amount: parseFloat(tx.amount) || 0,
+      currency: tx.currency || 'IDR',
       type: tx.type || 'expense',
       categoryId: tx.categoryId,
       datetime: tx.datetime ? new Date(tx.datetime).toISOString() : new Date().toISOString(),
@@ -266,13 +381,11 @@ class Store {
     };
   }
 
-  // Set Chart Type (doughnut, bar, line, scatter, radar)
   setChartType(type) {
     this.chartType = type;
     localStorage.setItem(STORAGE_KEYS.CHART_TYPE, type);
   }
 
-  // Set Chart Pattern Image Data URL
   setChartImagePattern(dataUrl) {
     this.chartImagePattern = dataUrl;
     if (dataUrl) {
@@ -282,28 +395,22 @@ class Store {
     }
   }
 
-  // Filtering Logic (Accounts for User email and Active Room monitoring)
+  // Filtering Logic
   getFilteredTransactions(timeframe = 'monthly', customStart = null, customEnd = null, categoryFilter = 'all', typeFilter = 'all', searchQuery = '') {
     const now = new Date();
     const currentUserEmail = this.currentUser ? this.currentUser.email : 'demo@fintrack.id';
 
     return this.transactions.filter(tx => {
-      // Room Mode vs Personal Mode
       if (this.activeRoom) {
         if (tx.roomCode !== this.activeRoom) return false;
       } else {
-        // Personal mode: match user's own transactions or personal room
         if (tx.roomCode) return false;
         if (tx.userEmail && tx.userEmail !== currentUserEmail) return false;
       }
 
-      // Category filter
       if (categoryFilter !== 'all' && tx.categoryId !== categoryFilter) return false;
-
-      // Type filter
       if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
 
-      // Search query filter
       if (searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase();
         const cat = this.getCategoryById(tx.categoryId);
@@ -313,7 +420,6 @@ class Store {
         if (!matchTitle && !matchNote && !matchCat) return false;
       }
 
-      // Timeframe Filter
       const txDate = new Date(tx.datetime);
       if (timeframe === 'daily') {
         return txDate.toDateString() === now.toDateString();
@@ -346,16 +452,17 @@ class Store {
     });
   }
 
-  // Summary Metrics Calculation
+  // Summary Metrics Calculation (Converts all transactions to IDR equivalent for metrics summary)
   calculateSummary(filteredTxs) {
     let totalIncome = 0;
     let totalExpense = 0;
 
     filteredTxs.forEach(tx => {
+      const amountInIdr = convertCurrency(tx.amount, tx.currency || 'IDR', 'IDR');
       if (tx.type === 'income') {
-        totalIncome += tx.amount;
+        totalIncome += amountInIdr;
       } else {
-        totalExpense += tx.amount;
+        totalExpense += amountInIdr;
       }
     });
 
@@ -377,6 +484,7 @@ class Store {
 
     filteredTxs.filter(t => t.type === 'expense').forEach(tx => {
       const cat = this.getCategoryById(tx.categoryId);
+      const amountInIdr = convertCurrency(tx.amount, tx.currency || 'IDR', 'IDR');
       if (!breakdownMap[cat.id]) {
         breakdownMap[cat.id] = {
           id: cat.id,
@@ -386,14 +494,14 @@ class Store {
           budget: cat.budget || 0
         };
       }
-      breakdownMap[cat.id].total += tx.amount;
+      breakdownMap[cat.id].total += amountInIdr;
     });
 
     return Object.values(breakdownMap).sort((a, b) => b.total - a.total);
   }
 
   exportToCSV(filteredTxs) {
-    const headers = ['ID', 'Judul', 'Jenis', 'Jumlah (Rp)', 'Kategori', 'Tanggal & Jam', 'User / Room', 'Catatan'];
+    const headers = ['ID', 'Judul', 'Jenis', 'Jumlah', 'Mata Uang', 'Kategori', 'Tanggal & Jam', 'User / Room', 'Catatan'];
     const rows = filteredTxs.map(tx => {
       const cat = this.getCategoryById(tx.categoryId);
       return [
@@ -401,6 +509,7 @@ class Store {
         `"${tx.title.replace(/"/g, '""')}"`,
         `"${tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}"`,
         tx.amount,
+        `"${tx.currency || 'IDR'}"`,
         `"${cat.name.replace(/"/g, '""')}"`,
         `"${new Date(tx.datetime).toLocaleString('id-ID')}"`,
         `"${tx.roomCode ? 'Room: ' + tx.roomCode : tx.userEmail}"`,
@@ -418,28 +527,6 @@ class Store {
     link.click();
     document.body.removeChild(link);
   }
-}
-
-export function formatRupiah(number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0
-  }).format(number);
-}
-
-export function formatDateTime(isoString) {
-  const date = new Date(isoString);
-  const dateStr = date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
-  const timeStr = date.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  return { dateStr, timeStr };
 }
 
 export const store = new Store();

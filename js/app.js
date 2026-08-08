@@ -1,9 +1,18 @@
 /* ==========================================================================
    FinTrack ID — Application Controller
-   Clean, Happy & Interactive
+   Clean, Happy, Interactive + PIN Auth, Profile & Multi-Currency
    ========================================================================== */
 
-import { store, formatRupiah, formatDateTime, getCurrentDateTimeLocalString } from './store.js';
+import {
+  store,
+  formatRupiah,
+  formatMoney,
+  convertCurrency,
+  EXCHANGE_RATES,
+  formatDateTime,
+  getCurrentDateTimeLocalString
+} from './store.js';
+
 import { renderCustomCategoryChart, updateTrendChart } from './charts.js';
 import { exportRecapToPDF } from './pdfExport.js';
 
@@ -17,7 +26,36 @@ const state = {
   catFilter: 'all',
   typeFilter: 'all',
   search: '',
+  pendingAvatarBase64: null
 };
+
+// ─────────────────────────────────────────
+// NUMBER FORMATTING HELPERS (1.000 / 100.000)
+// ─────────────────────────────────────────
+function formatNumberWithDots(rawVal) {
+  if (rawVal === null || rawVal === undefined || rawVal === '') return '';
+  const numStr = String(rawVal).replace(/[^0-9.,]/g, '');
+  if (!numStr) return '';
+
+  const hasComma = numStr.includes(',');
+  const parts = numStr.split(/[,.]/);
+
+  // Take integer part and add dots every 3 digits
+  const cleanInt = parts[0].replace(/^0+(?=\d)/, '');
+  const formattedInt = (cleanInt || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  if (hasComma && parts.length > 1) {
+    return formattedInt + ',' + parts[1].slice(0, 2);
+  }
+  return formattedInt;
+}
+
+function parseFormattedNumber(formattedStr) {
+  if (!formattedStr) return 0;
+  // Strip dots (thousands separator) and convert comma to dot for float parsing
+  const clean = String(formattedStr).replace(/\./g, '').replace(',', '.');
+  return parseFloat(clean) || 0;
+}
 
 // ─────────────────────────────────────────
 // THEME
@@ -25,7 +63,10 @@ const state = {
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   const btn = document.getElementById('btnTheme');
-  if (btn) { btn.textContent = t === 'light' ? '🌙' : '☀️'; btn.title = t === 'light' ? 'Dark Mode' : 'Light Mode'; }
+  if (btn) {
+    btn.textContent = t === 'light' ? '🌙' : '☀️';
+    btn.title = t === 'light' ? 'Dark Mode' : 'Light Mode';
+  }
 }
 
 // ─────────────────────────────────────────
@@ -38,7 +79,12 @@ function toast(msg, icon = '✅', cls = 't-info') {
   el.className = `toast ${cls}`;
   el.innerHTML = `<span style="font-size:18px;">${icon}</span><span>${msg}</span>`;
   rack.appendChild(el);
-  setTimeout(() => { el.style.transition = 'all .3s ease'; el.style.opacity = '0'; el.style.transform = 'translateX(110%)'; setTimeout(() => el.remove(), 310); }, 3400);
+  setTimeout(() => {
+    el.style.transition = 'all .3s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(110%)';
+    setTimeout(() => el.remove(), 310);
+  }, 3400);
 }
 
 // ─────────────────────────────────────────
@@ -88,17 +134,24 @@ function celebrate(type) {
 }
 
 // ─────────────────────────────────────────
-// MODAL
+// MODAL HANDLERS
 // ─────────────────────────────────────────
 function openModal(id) {
   const m = document.getElementById(id);
   if (!m) return;
   m.classList.add('open');
+
   if (id === 'modalTx') {
     const dt = document.getElementById('txDatetime');
     if (dt) dt.value = getCurrentDateTimeLocalString();
     const type = document.querySelector('input[name="txType"]:checked')?.value || 'expense';
     updateTxForm(type);
+
+    // Set initial currency dataset
+    const currSelect = document.getElementById('txCurrency');
+    if (currSelect) currSelect.dataset.prevCurr = currSelect.value || 'IDR';
+  } else if (id === 'modalProfile') {
+    populateProfileModal();
   }
 }
 
@@ -108,7 +161,40 @@ function closeModal(id) {
 }
 
 // ─────────────────────────────────────────
-// DYNAMIC TX FORM
+// PROFILE MODAL POPULATION & AVATAR
+// ─────────────────────────────────────────
+function populateProfileModal() {
+  const user = store.currentUser;
+  if (!user) return;
+
+  document.getElementById('profName').value  = user.name || '';
+  document.getElementById('profEmail').value = user.email || '';
+  document.getElementById('profPass').value  = user.password || '';
+  document.getElementById('profPin').value   = user.pin || '123456';
+
+  const avatarImg = document.getElementById('profileAvatarImg');
+  const avatarTxt = document.getElementById('profileAvatarText');
+  const btnRemove = document.getElementById('btnRemoveAvatar');
+
+  state.pendingAvatarBase64 = user.avatar || null;
+
+  if (user.avatar) {
+    avatarImg.src = user.avatar;
+    avatarImg.classList.remove('hidden');
+    avatarTxt.classList.add('hidden');
+    btnRemove?.classList.remove('hidden');
+  } else {
+    avatarImg.src = '';
+    avatarImg.classList.add('hidden');
+    avatarTxt.textContent = user.name.charAt(0).toUpperCase();
+    avatarTxt.classList.remove('hidden');
+    btnRemove?.classList.add('hidden');
+  }
+  clearErr('profileError');
+}
+
+// ─────────────────────────────────────────
+// DYNAMIC TX FORM & CATEGORY FILTERING BY TYPE
 // ─────────────────────────────────────────
 function updateTxForm(type) {
   const isIn = type === 'income';
@@ -133,14 +219,37 @@ function updateTxForm(type) {
 
   if (src) src.classList.toggle('hidden', !isIn);
   if (mer) mer.classList.toggle('hidden', isIn);
-  if (amtL) amtL.textContent = isIn ? '💵 Jumlah Pemasukan (Rp)' : '💸 Jumlah Pengeluaran (Rp)';
+
+  const currSymbol = EXCHANGE_RATES[document.getElementById('txCurrency')?.value || 'IDR']?.symbol || 'Rp';
+  if (amtL) amtL.textContent = isIn ? `💵 Jumlah Pemasukan (${currSymbol})` : `💸 Jumlah Pengeluaran (${currSymbol})`;
+
   if (sub)  sub.style.background = isIn
     ? 'linear-gradient(135deg, #10b981, #059669)'
     : 'linear-gradient(135deg, #7c3aed, #6d28d9)';
+
+  // Filter Category Dropdown in Tx Modal based on selected type (Income vs Expense)
+  refreshTxModalCategoryDropdown(type);
+}
+
+function refreshTxModalCategoryDropdown(typeFilter = 'expense') {
+  const txCat = document.getElementById('txCat');
+  if (!txCat) return;
+
+  // Filter categories matching selected type
+  const matchingCats = store.categories.filter(c => c.type === typeFilter);
+
+  txCat.innerHTML = matchingCats.map(c =>
+    `<option value="${c.id}">${c.name}</option>`
+  ).join('');
+
+  // Fallback if no category matches
+  if (matchingCats.length === 0) {
+    txCat.innerHTML = `<option value="">-- Belum ada kategori ${typeFilter === 'income' ? 'Pemasukan' : 'Pengeluaran'} --</option>`;
+  }
 }
 
 // ─────────────────────────────────────────
-// AUTH UI
+// AUTH UI & PROFILE AVATAR
 // ─────────────────────────────────────────
 function updateAuthUI() {
   const user = store.currentUser;
@@ -149,11 +258,18 @@ function updateAuthUI() {
   document.getElementById('userArea').style.display  = user ? 'flex' : 'none';
 
   if (user) {
-    document.getElementById('navName').textContent   = user.name;
-    document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('navName').textContent = user.name;
+    const navAvatar = document.getElementById('navAvatar');
+    if (navAvatar) {
+      if (user.avatar) {
+        navAvatar.innerHTML = `<img src="${user.avatar}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      } else {
+        navAvatar.textContent = user.name.charAt(0).toUpperCase();
+      }
+    }
   }
 
-  // view switch
+  // View switch
   const landing   = document.getElementById('viewLanding');
   const dashboard = document.getElementById('viewDashboard');
   if (user) {
@@ -181,19 +297,14 @@ function updateRoomUI() {
 }
 
 // ─────────────────────────────────────────
-// CATEGORY DROPDOWNS
+// CATEGORY DROPDOWNS FOR FILTER
 // ─────────────────────────────────────────
 function refreshCatDropdowns() {
-  const txCat   = document.getElementById('txCat');
   const filtCat = document.getElementById('filterCat');
-  if (!txCat || !filtCat) return;
+  if (!filtCat) return;
 
   const cats = store.categories;
   const prevFilter = filtCat.value;
-
-  txCat.innerHTML = cats.map(c =>
-    `<option value="${c.id}">${c.type === 'income' ? '[Pemasukan] ' : '[Pengeluaran] '}${c.name}</option>`
-  ).join('');
 
   filtCat.innerHTML = `<option value="all">Semua Kategori</option>` +
     cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -227,7 +338,8 @@ function renderBudget(txs) {
 
   const spent = {};
   txs.filter(t => t.type === 'expense').forEach(t => {
-    spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
+    const amountInIdr = convertCurrency(t.amount, t.currency || 'IDR', 'IDR');
+    spent[t.categoryId] = (spent[t.categoryId] || 0) + amountInIdr;
   });
 
   container.innerHTML = expCats.map(cat => {
@@ -274,20 +386,22 @@ function renderSheet(txs) {
     const cat = store.getCategoryById(tx.categoryId);
     const { dateStr, timeStr } = formatDateTime(tx.datetime);
     const isIn = tx.type === 'income';
-    if (isIn) inc += tx.amount; else exp += tx.amount;
+    const amountInIdr = convertCurrency(tx.amount, tx.currency || 'IDR', 'IDR');
+    if (isIn) inc += amountInIdr; else exp += amountInIdr;
+
     return `<tr>
       <td style="color:var(--text-3)">${i+1}</td>
       <td style="white-space:nowrap;font-size:12px;">${dateStr}<br><span style="color:var(--text-3)">${timeStr}</span></td>
       <td><strong>${tx.title}</strong>${tx.note ? `<br><span style="color:var(--text-3);font-size:11px;">${tx.note}</span>` : ''}</td>
       <td><span style="color:${cat.color};font-weight:700">${cat.name}</span></td>
       <td style="color:${isIn ? 'var(--green)' : 'var(--red)'};font-weight:700">${isIn ? 'MASUK' : 'KELUAR'}</td>
-      <td style="text-align:right;font-weight:700;color:${isIn ? 'var(--green)' : 'var(--red)'}">${isIn ? '+' : '-'} ${formatRupiah(tx.amount)}</td>
+      <td style="text-align:right;font-weight:700;color:${isIn ? 'var(--green)' : 'var(--red)'}">${isIn ? '+' : '-'} ${formatMoney(tx.amount, tx.currency || 'IDR')}</td>
     </tr>`;
   }).join('');
 
   const net = inc - exp;
   const totRow = `<tr class="total-row">
-    <td colspan="4" style="text-align:right;font-weight:800;">TOTAL REKAP:</td>
+    <td colspan="4" style="text-align:right;font-weight:800;">TOTAL REKAP (IDR):</td>
     <td style="color:var(--green);font-weight:700">Masuk: ${formatRupiah(inc)}</td>
     <td style="text-align:right;font-weight:900;color:${net >= 0 ? 'var(--green)' : 'var(--red)'}">Net: ${formatRupiah(net)}</td>
   </tr>`;
@@ -299,9 +413,9 @@ function renderSheet(txs) {
 // TRANSACTION TABLE
 // ─────────────────────────────────────────
 function renderTxTable(txs) {
-  const body    = document.getElementById('txBody');
-  const empty   = document.getElementById('emptyTx');
-  const badge   = document.getElementById('txCount');
+  const body  = document.getElementById('txBody');
+  const empty = document.getElementById('emptyTx');
+  const badge = document.getElementById('txCount');
   if (!body) return;
 
   if (badge) badge.textContent = `${txs.length} transaksi`;
@@ -334,7 +448,7 @@ function renderTxTable(txs) {
           ${dateStr}<br><span style="color:var(--text-3)">${timeStr}</span>
         </td>
         <td style="text-align:right">
-          <span class="amount ${isIn ? 'in' : 'out'}">${isIn ? '+' : '-'} ${formatRupiah(tx.amount)}</span>
+          <span class="amount ${isIn ? 'in' : 'out'}">${isIn ? '+' : '-'} ${formatMoney(tx.amount, tx.currency || 'IDR')}</span>
         </td>
         <td style="text-align:right">
           <button class="icon-btn btn-del-tx" data-id="${tx.id}" title="Hapus">
@@ -397,6 +511,9 @@ function bindEvents() {
   document.getElementById('btnCreateRoom')?.addEventListener('click', () => openModal('modalCreateRoom'));
   document.getElementById('btnJoinRoom')?.addEventListener('click',   () => openModal('modalJoinRoom'));
 
+  // Open Profile modal on clicking User Chip in header
+  document.getElementById('userChip')?.addEventListener('click', () => openModal('modalProfile'));
+
   // ── Close modals ──
   document.querySelectorAll('[data-close]').forEach(btn => {
     btn.addEventListener('click', e => closeModal(e.currentTarget.dataset.close));
@@ -413,7 +530,24 @@ function bindEvents() {
     localStorage.setItem('fintrack-theme', next);
   });
 
-  // ── Auth: Login ──
+  // ── Login Modal Tabs (Password vs PIN) ──
+  document.getElementById('tabLoginPass')?.addEventListener('click', () => {
+    document.getElementById('tabLoginPass').classList.add('active');
+    document.getElementById('tabLoginPin').classList.remove('active');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('loginPinForm').classList.add('hidden');
+    clearErr('loginError');
+  });
+
+  document.getElementById('tabLoginPin')?.addEventListener('click', () => {
+    document.getElementById('tabLoginPin').classList.add('active');
+    document.getElementById('tabLoginPass').classList.remove('active');
+    document.getElementById('loginPinForm').classList.remove('hidden');
+    document.getElementById('loginForm').classList.add('hidden');
+    clearErr('loginPinError');
+  });
+
+  // ── Auth: Login with Password ──
   document.getElementById('loginForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -424,8 +558,23 @@ function bindEvents() {
       document.getElementById('loginForm').reset();
       clearErr('loginError');
       refresh();
-      toast(`Selamat datang, ${store.currentUser.name}! 👋`, '✅');
+      toast(`Selamat datang kembali, ${store.currentUser.name}! 👋`, '✅');
     } catch (err) { showErr('loginError', err.message); }
+  });
+
+  // ── Auth: Login with PIN ──
+  document.getElementById('loginPinForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('loginPinEmail').value;
+    const pin   = document.getElementById('loginPinVal').value;
+    try {
+      store.loginWithPin(email, pin);
+      closeModal('modalLogin');
+      document.getElementById('loginPinForm').reset();
+      clearErr('loginPinError');
+      refresh();
+      toast(`Selamat datang kembali, ${store.currentUser.name}! 🔓`, '🔓');
+    } catch (err) { showErr('loginPinError', err.message); }
   });
 
   // ── Auth: Register ──
@@ -434,14 +583,69 @@ function bindEvents() {
     const name  = document.getElementById('regName').value;
     const email = document.getElementById('regEmail').value;
     const pass  = document.getElementById('regPass').value;
+    const pin   = document.getElementById('regPin').value;
     try {
-      store.registerUser(name, email, pass);
+      store.registerUser(name, email, pass, pin);
       closeModal('modalRegister');
       document.getElementById('registerForm').reset();
       clearErr('registerError');
       refresh();
-      toast(`Akun dibuat! Selamat datang, ${store.currentUser.name}! 🎉`, '🎊', 't-income');
+      toast(`Akun berhasil dibuat! Selamat datang, ${store.currentUser.name}! 🎉`, '🎊', 't-income');
     } catch (err) { showErr('registerError', err.message); }
+  });
+
+  // ── User Profile Edit & Photo Upload ──
+  document.getElementById('profilePhotoInput')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      state.pendingAvatarBase64 = ev.target.result;
+      const avatarImg = document.getElementById('profileAvatarImg');
+      const avatarTxt = document.getElementById('profileAvatarText');
+      const btnRemove = document.getElementById('btnRemoveAvatar');
+
+      avatarImg.src = ev.target.result;
+      avatarImg.classList.remove('hidden');
+      avatarTxt.classList.add('hidden');
+      btnRemove.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btnRemoveAvatar')?.addEventListener('click', () => {
+    state.pendingAvatarBase64 = null;
+    const avatarImg = document.getElementById('profileAvatarImg');
+    const avatarTxt = document.getElementById('profileAvatarText');
+    const btnRemove = document.getElementById('btnRemoveAvatar');
+
+    avatarImg.src = '';
+    avatarImg.classList.add('hidden');
+    avatarTxt.textContent = (document.getElementById('profName').value || 'U').charAt(0).toUpperCase();
+    avatarTxt.classList.remove('hidden');
+    btnRemove.classList.add('hidden');
+  });
+
+  document.getElementById('profileForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const name  = document.getElementById('profName').value;
+    const email = document.getElementById('profEmail').value;
+    const pass  = document.getElementById('profPass').value;
+    const pin   = document.getElementById('profPin').value;
+
+    try {
+      store.updateUserProfile({
+        name,
+        email,
+        password: pass,
+        pin,
+        avatar: state.pendingAvatarBase64
+      });
+      closeModal('modalProfile');
+      refresh();
+      toast('Profil & foto berhasil diperbarui! ✨', '👤');
+    } catch (err) { showErr('profileError', err.message); }
   });
 
   // ── Auth: Logout ──
@@ -451,9 +655,35 @@ function bindEvents() {
     toast('Kamu sudah logout.', '👋');
   });
 
-  // ── Tx type radio → dynamic form ──
+  // ── Tx Type Radio Switch (Pengeluaran vs Pemasukan) ──
   document.querySelectorAll('input[name="txType"]').forEach(r => {
     r.addEventListener('change', e => updateTxForm(e.target.value));
+  });
+
+  // ── Amount Input Formatting (1.000 / 100.000) ──
+  document.getElementById('txAmount')?.addEventListener('input', e => {
+    const rawValue = parseFormattedNumber(e.target.value);
+    e.target.value = formatNumberWithDots(rawValue > 0 ? rawValue : '');
+  });
+
+  // ── Currency Switch with Auto Conversion ──
+  document.getElementById('txCurrency')?.addEventListener('change', e => {
+    const currSelect = e.target;
+    const prevCurr = currSelect.dataset.prevCurr || 'IDR';
+    const newCurr  = currSelect.value || 'IDR';
+
+    const currentVal = parseFormattedNumber(document.getElementById('txAmount').value);
+    if (currentVal > 0) {
+      const converted = convertCurrency(currentVal, prevCurr, newCurr);
+      document.getElementById('txAmount').value = formatNumberWithDots(Math.round(converted * 100) / 100);
+    }
+    currSelect.dataset.prevCurr = newCurr;
+
+    // Update label text with new symbol
+    const isIncome = document.querySelector('input[name="txType"]:checked')?.value === 'income';
+    const symbol = EXCHANGE_RATES[newCurr]?.symbol || 'Rp';
+    const amtL = document.getElementById('txAmountLbl');
+    if (amtL) amtL.textContent = isIncome ? `💵 Jumlah Pemasukan (${symbol})` : `💸 Jumlah Pengeluaran (${symbol})`;
   });
 
   // ── Tx form submit ──
@@ -461,31 +691,44 @@ function bindEvents() {
     e.preventDefault();
     const type     = document.querySelector('input[name="txType"]:checked').value;
     const title    = document.getElementById('txTitle').value.trim();
-    const amount   = parseFloat(document.getElementById('txAmount').value);
+    const formattedAmount = document.getElementById('txAmount').value;
+    const amount   = parseFormattedNumber(formattedAmount);
+    const currency = document.getElementById('txCurrency')?.value || 'IDR';
     const catId    = document.getElementById('txCat').value;
     const datetime = document.getElementById('txDatetime').value;
     const note     = document.getElementById('txNote').value.trim();
     const source   = document.getElementById('txSource')?.value || '';
     const merchant = document.getElementById('txMerchant')?.value.trim() || '';
 
-    if (!title || isNaN(amount) || amount <= 0 || !datetime) {
-      alert('Mohon lengkapi data transaksi.'); return;
+    if (!title || isNaN(amount) || amount <= 0 || !datetime || !catId) {
+      alert('Mohon lengkapi data transaksi dengan kategori yang valid.'); return;
     }
 
     let enrichedNote = note;
-    if (type === 'income' && source)   enrichedNote = source + (note ? ` • ${note}` : '');
+    if (type === 'income' && source)    enrichedNote = source + (note ? ` • ${note}` : '');
     if (type === 'expense' && merchant) enrichedNote = merchant + (note ? ` • ${note}` : '');
 
-    store.addTransaction({ title, amount, categoryId: catId, datetime, note: enrichedNote, type });
+    store.addTransaction({
+      title,
+      amount,
+      currency,
+      categoryId: catId,
+      datetime,
+      note: enrichedNote,
+      type
+    });
+
     closeModal('modalTx');
     document.getElementById('txForm').reset();
+    document.getElementById('txAmount').value = '';
     updateTxForm('expense');
     refresh();
 
     celebrate(type);
+    const moneyStr = formatMoney(amount, currency);
     const msg = type === 'income'
-      ? `💰 ${title} — Yeay, selamat kamu kaya!`
-      : `😅 ${title} — tercatat sebagai pengeluaran!`;
+      ? `💰 ${title} (${moneyStr}) — Yeay, selamat kamu kaya!`
+      : `😅 ${title} (${moneyStr}) — tercatat sebagai pengeluaran!`;
     toast(msg, type === 'income' ? '🤑' : '😢', type === 'income' ? 't-income' : 't-expense');
   });
 
@@ -654,15 +897,6 @@ function bindEvents() {
     toast('CSV / Excel berhasil diunduh!', '📥');
   });
 }
-
-// ─────────────────────────────────────────
-// CHARTS: remap canvas IDs
-// ─────────────────────────────────────────
-// charts.js uses 'categoryChartCanvas' and 'trendChartCanvas'
-// We need to keep those IDs or patch charts.js.
-// Easier: we named canvases canvasCategory / canvasTrend — update charts.js usage inline here
-// Actually simpler: just alias via CSS ID in HTML. But since charts.js hardcodes IDs,
-// let's check what charts.js looks for.
 
 // ─────────────────────────────────────────
 // INIT

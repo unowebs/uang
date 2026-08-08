@@ -932,6 +932,14 @@ body {
   transform: translateY(0) scale(1);
 }
 
+.modal form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modal-head {
   display: flex;
   align-items: center;
@@ -970,6 +978,8 @@ body {
   padding: 22px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .modal-foot {
@@ -981,6 +991,74 @@ body {
   flex-shrink: 0;
   background: var(--bg-input);
 }
+
+/* Auth Tabs for PIN Login */
+.auth-tabs {
+  display: flex;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 14px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.auth-tab.active {
+  background: var(--primary-lt);
+  color: var(--primary);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+/* Profile Avatar Preview */
+.profile-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.profile-avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 
 /* ─────────────────────────────────────────
    FORM ELEMENTS
