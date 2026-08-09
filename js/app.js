@@ -300,6 +300,40 @@ function updateRoomUI() {
 }
 
 // ─────────────────────────────────────────
+// ROLE PERMISSION ENFORCEMENT
+// ─────────────────────────────────────────
+const ROLE_LABELS = {
+  host:   { label: '👑 Host', color: '#f59e0b' },
+  member: { label: '👤 Member', color: 'var(--primary)' },
+  editor: { label: '✏️ Editor', color: '#06b6d4' },
+  viewer: { label: '👁️ Viewer', color: 'var(--text-3)' }
+};
+
+function applyRolePermissions(role) {
+  if (!store.activeRoom) {
+    // No room → show all buttons
+    document.getElementById('btnNewTx')?.classList.remove('hidden');
+    document.querySelectorAll('.btn-edit-tx').forEach(b => b.classList.remove('hidden'));
+    document.querySelectorAll('.btn-del-tx').forEach(b => b.classList.remove('hidden'));
+    return;
+  }
+  const r = role || store.roomRole || 'viewer';
+  const canAdd    = ['host', 'member'].includes(r);
+  const canEdit   = ['host', 'member', 'editor'].includes(r);
+  const canDelete = ['host', 'member'].includes(r);
+
+  const btnNew = document.getElementById('btnNewTx');
+  if (btnNew) btnNew.style.display = canAdd ? '' : 'none';
+
+  document.querySelectorAll('.btn-edit-tx').forEach(b => {
+    b.style.display = canEdit ? '' : 'none';
+  });
+  document.querySelectorAll('.btn-del-tx').forEach(b => {
+    b.style.display = canDelete ? '' : 'none';
+  });
+}
+
+// ─────────────────────────────────────────
 // CATEGORY DROPDOWNS FOR FILTER
 // ─────────────────────────────────────────
 function refreshCatDropdowns() {
@@ -486,6 +520,7 @@ function setPeriodLabel() {
 function refresh() {
   updateAuthUI();
   updateRoomUI();
+  applyRolePermissions(store.roomRole);
 
   const txs = store.getFilteredTransactions(
     state.timeframe, state.customStart, state.customEnd,
@@ -923,8 +958,8 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   });
 
   // ── Room: leave ──
-  document.getElementById('btnLeaveRoom')?.addEventListener('click', () => {
-    store.leaveRoom(); refresh(); toast('Kembali ke mode Pribadi.', '🏠');
+  document.getElementById('btnLeaveRoom')?.addEventListener('click', async () => {
+    await store.leaveRoom(); refresh(); toast('Kembali ke mode Pribadi.', '🏠');
   });
 
   // ── Timeframe tabs ──
@@ -1053,10 +1088,15 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   });
 
   // ── Room Members Modal ──
-  document.getElementById('btnRoomMembers')?.addEventListener('click', () => {
+  document.getElementById('btnRoomMembers')?.addEventListener('click', async () => {
     if (!store.activeRoom) return;
     const room = store.rooms.find(r => r.code === store.activeRoom);
     if (!room) { alert('Data Room tidak ditemukan.'); return; }
+
+    const myEmail   = (store.currentUser?.email || '').toLowerCase();
+    const hostEmail = (room.hostEmail || '').toLowerCase();
+    const isHost    = myEmail === hostEmail;
+    const ACTIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
     const titleEl = document.getElementById('roomMembersTitle');
     const listEl  = document.getElementById('roomMembersList');
@@ -1065,45 +1105,112 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
       titleEl.innerHTML = `🏠 Room: <span style="color:var(--primary);">${room.name}</span> <span style="font-size:12px;background:var(--bg-input);padding:3px 8px;border-radius:6px;border:1px solid var(--border);">[${room.code}]</span>`;
     }
 
-    const hostEmail = (room.hostEmail || '').toLowerCase();
-    const members = Array.isArray(room.members) && room.members.length > 0 ? room.members : [hostEmail];
+    if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-3);">Memuat data anggota…</div>';
+    openModal('modalRoomMembers');
 
-    if (listEl) {
-      listEl.innerHTML = members.map(mEmail => {
-        const cleanM = (mEmail || '').toLowerCase();
-        const userObj = store.users.find(u => u.email === cleanM);
-        const name = userObj ? userObj.name : cleanM;
-        const avatar = userObj ? userObj.avatar : null;
-        const isHost = cleanM === hostEmail;
+    // Fetch from cloud
+    const memberRows = await store.fetchRoomMemberList();
 
-        const avatarHtml = avatar
-          ? `<img src="${avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--primary-lt);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">${name.charAt(0).toUpperCase()}</div>`;
+    // Split into active (last_seen < 5 min) and inactive
+    const now = Date.now();
+    const activeRows   = memberRows.filter(m => {
+      const diff = now - new Date(m.last_seen).getTime();
+      return m.is_active && diff < ACTIVE_THRESHOLD_MS;
+    });
+    const inactiveRows = memberRows.filter(m => {
+      const diff = now - new Date(m.last_seen).getTime();
+      return !m.is_active || diff >= ACTIVE_THRESHOLD_MS;
+    });
 
-        return `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              ${avatarHtml}
-              <div>
-                <div style="font-weight:700;font-size:14px;color:var(--text-1);">${name}</div>
-                <div style="font-size:12px;color:var(--text-3);">${cleanM}</div>
-              </div>
+    function memberCard(m, showControls) {
+      const cleanM  = (m.email || '').toLowerCase();
+      const userObj = store.users.find(u => u.email === cleanM);
+      const name    = userObj?.name || cleanM;
+      const avatar  = userObj?.avatar || null;
+      const mIsHost = cleanM === hostEmail;
+      const isActive = activeRows.includes(m);
+      const roleInfo = ROLE_LABELS[m.role] || ROLE_LABELS.viewer;
+
+      const avatarHtml = avatar
+        ? `<img src="${avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${isActive ? '#10b981' : 'var(--border)'}">`
+        : `<div style="width:40px;height:40px;border-radius:50%;background:var(--primary-lt);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;border:2px solid ${isActive ? '#10b981' : 'var(--border)'};">${name.charAt(0).toUpperCase()}</div>`;
+
+      const presenceDot = isActive
+        ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:4px;"></span><span style="font-size:11px;color:#10b981;font-weight:600;">Aktif</span>`
+        : `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-3);margin-right:4px;"></span><span style="font-size:11px;color:var(--text-3);">Tidak Aktif</span>`;
+
+      const roleBadge = `<span style="font-size:11px;font-weight:700;background:rgba(99,102,241,0.1);color:${roleInfo.color};padding:3px 9px;border-radius:99px;border:1px solid ${roleInfo.color}40;">${roleInfo.label}</span>`;
+
+      const roleDropdown = (!mIsHost && showControls && isHost) ? `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+          <select data-email="${cleanM}" class="member-role-select" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-1);cursor:pointer;">
+            <option value="viewer"  ${m.role==='viewer'  ? 'selected':''}>👁️ Viewer (hanya lihat)</option>
+            <option value="editor"  ${m.role==='editor'  ? 'selected':''}>✏️ Editor (lihat & ubah)</option>
+            <option value="member"  ${m.role==='member'  ? 'selected':''}>👤 Member (full access)</option>
+          </select>
+          <button data-email="${cleanM}" data-role="" class="member-role-save btn btn-sm" style="font-size:12px;padding:4px 10px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;">Simpan</button>
+        </div>
+      ` : '';
+
+      return `
+        <div style="padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${avatarHtml}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:14px;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cleanM}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">${presenceDot}</div>
             </div>
-            ${isHost ? `
-              <span style="font-size:12px;font-weight:700;background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 10px;border-radius:99px;border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;gap:4px;">
-                👑 Pemilik Room (Host)
-              </span>
-            ` : `
-              <span style="font-size:12px;font-weight:600;background:var(--bg-input);color:var(--text-2);padding:4px 10px;border-radius:99px;border:1px solid var(--border);">
-                👤 Anggota
-              </span>
-            `}
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              ${mIsHost ? `<span style="font-size:12px;font-weight:700;background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 10px;border-radius:99px;border:1px solid rgba(245,158,11,0.3);">👑 Host</span>` : roleBadge}
+            </div>
           </div>
-        `;
-      }).join('');
+          ${roleDropdown}
+        </div>
+      `;
     }
 
-    openModal('modalRoomMembers');
+    let html = '';
+
+    // Active members section (visible to all)
+    html += `<div style="font-size:12px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🟢 Sedang Aktif (${activeRows.length})</div>`;
+    if (activeRows.length === 0) {
+      html += `<div style="font-size:13px;color:var(--text-3);padding:10px 0 16px;">Belum ada anggota aktif saat ini.</div>`;
+    } else {
+      html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">${activeRows.map(m => memberCard(m, true)).join('')}</div>`;
+    }
+
+    // Inactive members section (host only)
+    if (isHost) {
+      html += `<div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;margin-top:4px;">⚫ Tidak Aktif / Pernah Bergabung (${inactiveRows.length})</div>`;
+      if (inactiveRows.length === 0) {
+        html += `<div style="font-size:13px;color:var(--text-3);padding:10px 0;">Belum ada anggota tidak aktif.</div>`;
+      } else {
+        html += `<div style="display:flex;flex-direction:column;gap:8px;">${inactiveRows.map(m => memberCard(m, true)).join('')}</div>`;
+      }
+    } else {
+      html += `<div style="font-size:11px;color:var(--text-3);padding:8px 0;font-style:italic;">Hanya pemilik room yang dapat melihat daftar anggota tidak aktif.</div>`;
+    }
+
+    if (listEl) {
+      listEl.innerHTML = html;
+
+      // Bind save role buttons
+      listEl.querySelectorAll('.member-role-save').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const email = btn.dataset.email;
+          const sel   = listEl.querySelector(`.member-role-select[data-email="${email}"]`);
+          const role  = sel ? sel.value : 'viewer';
+          btn.disabled = true;
+          btn.textContent = '…';
+          await store.updateMemberRole(email, role);
+          btn.textContent = '✓ Tersimpan';
+          btn.style.background = '#10b981';
+          toast(`Akses ${email} diubah ke: ${ROLE_LABELS[role]?.label || role}`, '🔐');
+          setTimeout(() => { btn.disabled = false; btn.textContent = 'Simpan'; btn.style.background = 'var(--primary)'; }, 2000);
+        });
+      });
+    }
   });
 
   // ── Recap / spreadsheet ──
@@ -1224,4 +1331,24 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshCatDropdowns();
   bindEvents();
   refresh();
+
+  // ── Heartbeat: keep current user marked active every 30s ──
+  setInterval(async () => {
+    if (store.activeRoom && store.currentUser) {
+      await store.heartbeat();
+    }
+  }, 30_000);
+
+  // ── Role-change polling every 5s: auto reload if host changed your role ──
+  setInterval(async () => {
+    if (!store.activeRoom || !store.currentUser) return;
+    const newRole = await store.pollRoleChange();
+    if (newRole) {
+      applyRolePermissions(newRole);
+      const label = ROLE_LABELS[newRole]?.label || newRole;
+      toast(`Akses kamu di room ini diubah menjadi: ${label}`, '🔐');
+      // Auto reload after 1.5s to apply all restrictions cleanly
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  }, 5_000);
 });

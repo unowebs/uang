@@ -46,11 +46,14 @@ CREATE TABLE public.rooms (
 
 -- 5. Room Members Table
 CREATE TABLE public.room_members (
-  id        UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  room_code TEXT REFERENCES public.rooms(code) ON DELETE CASCADE,
-  email     TEXT NOT NULL,
-  role      TEXT CHECK (role IN ('owner', 'viewer')) DEFAULT 'viewer',
-  joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_code       TEXT REFERENCES public.rooms(code) ON DELETE CASCADE,
+  email           TEXT NOT NULL,
+  role            TEXT CHECK (role IN ('host', 'member', 'editor', 'viewer')) DEFAULT 'member',
+  is_active       BOOLEAN DEFAULT false,
+  last_seen       TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  role_updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  joined_at       TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(room_code, email)
 );
 

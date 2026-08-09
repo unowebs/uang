@@ -199,7 +199,121 @@ async function saveRoomToCloud(room) {
   }
 }
 
+// ── Room Members Cloud Helpers ──────────────────────────────────────────────
+
+/** Fetch all members of a room from cloud */
+async function fetchRoomMembers(roomCode) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?room_code=eq.${encodeURIComponent(roomCode)}&select=*&order=joined_at.asc`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (res.ok) return await res.json();
+  } catch (e) { console.warn('fetchRoomMembers error:', e); }
+  return [];
+}
+
+/** Upsert (insert or update) a member row in room_members */
+async function upsertRoomMember(roomCode, email, role = 'member', isActive = true) {
+  const now = new Date().toISOString();
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?on_conflict=room_code,email`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          room_code: roomCode,
+          email: email,
+          role: role,
+          is_active: isActive,
+          last_seen: now
+        })
+      }
+    );
+    if (!res.ok) console.error('[Supabase] upsertRoomMember failed:', res.status, await res.text());
+  } catch (e) { console.warn('upsertRoomMember error:', e); }
+}
+
+/** Update a member's role and set role_updated_at */
+async function updateMemberRoleCloud(roomCode, email, role) {
+  const now = new Date().toISOString();
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?room_code=eq.${encodeURIComponent(roomCode)}&email=eq.${encodeURIComponent(email)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ role: role, role_updated_at: now })
+      }
+    );
+    if (!res.ok) console.error('[Supabase] updateMemberRoleCloud failed:', res.status, await res.text());
+  } catch (e) { console.warn('updateMemberRoleCloud error:', e); }
+}
+
+/** Heartbeat: mark member as active and refresh last_seen */
+async function heartbeatMemberCloud(roomCode, email) {
+  const now = new Date().toISOString();
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?room_code=eq.${encodeURIComponent(roomCode)}&email=eq.${encodeURIComponent(email)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_active: true, last_seen: now })
+      }
+    );
+  } catch (e) { /* silent fail for heartbeat */ }
+}
+
+/** Mark member as inactive when they leave */
+async function markMemberInactiveCloud(roomCode, email) {
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?room_code=eq.${encodeURIComponent(roomCode)}&email=eq.${encodeURIComponent(email)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_active: false })
+      }
+    );
+  } catch (e) { /* silent */ }
+}
+
+/** Get the current user's role in a specific room */
+async function getMyRoomRoleCloud(roomCode, email) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/room_members?room_code=eq.${encodeURIComponent(roomCode)}&email=eq.${encodeURIComponent(email)}&select=role,role_updated_at`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return data.length > 0 ? data[0] : null;
+    }
+  } catch (e) { /* silent */ }
+  return null;
+}
+
 // Transaction Cloud Sync Helpers
+
 async function fetchCloudTransactions() {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?select=*`, {
@@ -287,6 +401,11 @@ class Store {
     this.activeRoom = this.loadActiveRoom();
     this.chartType = localStorage.getItem(STORAGE_KEYS.CHART_TYPE) || 'doughnut';
     this.chartImagePattern = localStorage.getItem(STORAGE_KEYS.CHART_IMAGE) || null;
+
+    /** Current user's role in activeRoom: 'host'|'member'|'editor'|'viewer'|null */
+    this.roomRole = null;
+    /** Timestamp of last known role_updated_at (for change detection) */
+    this.lastRoleUpdatedAt = null;
 
     // Initial background sync from cloud for multi-browser support
     this.syncAllFromCloud();
@@ -560,26 +679,29 @@ class Store {
     if (existing) {
       throw new Error('Kode Room sudah digunakan. Buat kode lain.');
     }
+    const hostEmail = this.currentUser ? this.currentUser.email : 'demo@fintrack.id';
     const newRoom = {
       code: cleanCode,
       name: roomName,
-      hostEmail: this.currentUser ? this.currentUser.email : 'demo@fintrack.id',
-      members: [this.currentUser ? this.currentUser.email : 'demo@fintrack.id']
+      hostEmail: hostEmail,
+      members: [hostEmail]
     };
     this.rooms.push(newRoom);
     localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(this.rooms));
 
-    // Sync to Supabase Cloud so anyone on another device can join
+    // Sync room + add host to room_members
     await saveRoomToCloud(newRoom);
+    await upsertRoomMember(cleanCode, hostEmail, 'host', true);
 
     this.activeRoom = cleanCode;
+    this.roomRole = 'host';
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROOM, cleanCode);
     return newRoom;
   }
 
   async joinRoom(roomCode) {
     const cleanCode = roomCode.toUpperCase().trim();
-    
+
     // Sync rooms from cloud so rooms created on another device are fetched!
     await this.syncRoomsFromCloud();
 
@@ -589,13 +711,23 @@ class Store {
     }
 
     const email = this.currentUser ? this.currentUser.email : 'guest@fintrack.id';
+    const isHost = room.hostEmail === email;
+    const defaultRole = isHost ? 'host' : 'member';
+
+    // Always upsert to room_members (preserves existing role if already joined)
+    const existingRecord = await getMyRoomRoleCloud(cleanCode, email);
+    const assignedRole = existingRecord ? existingRecord.role : defaultRole;
+
     if (!room.members.includes(email)) {
       room.members.push(email);
       localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(this.rooms));
       await saveRoomToCloud(room);
     }
+    await upsertRoomMember(cleanCode, email, assignedRole, true);
 
     this.activeRoom = cleanCode;
+    this.roomRole = assignedRole;
+    this.lastRoleUpdatedAt = existingRecord ? existingRecord.role_updated_at : null;
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROOM, cleanCode);
 
     // Sync transactions for this room from cloud
@@ -604,9 +736,52 @@ class Store {
     return room;
   }
 
-  leaveRoom() {
+  async leaveRoom() {
+    if (this.activeRoom && this.currentUser) {
+      await markMemberInactiveCloud(this.activeRoom, this.currentUser.email);
+    }
     this.activeRoom = null;
+    this.roomRole = null;
+    this.lastRoleUpdatedAt = null;
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_ROOM);
+  }
+
+  // ── Public Room Member API ─────────────────────────────────────────────────
+
+  /** Fetch all room_members rows for current active room */
+  async fetchRoomMemberList() {
+    if (!this.activeRoom) return [];
+    return await fetchRoomMembers(this.activeRoom);
+  }
+
+  /** Update a member's role (host only action) */
+  async updateMemberRole(email, role) {
+    if (!this.activeRoom) return;
+    await updateMemberRoleCloud(this.activeRoom, email, role);
+  }
+
+  /** Heartbeat: keep current user marked as active */
+  async heartbeat() {
+    if (!this.activeRoom || !this.currentUser) return;
+    await heartbeatMemberCloud(this.activeRoom, this.currentUser.email);
+  }
+
+  /** Poll for role change; returns new role if changed, null otherwise */
+  async pollRoleChange() {
+    if (!this.activeRoom || !this.currentUser) return null;
+    const record = await getMyRoomRoleCloud(this.activeRoom, this.currentUser.email);
+    if (!record) return null;
+    // Detect change by comparing role_updated_at timestamp
+    if (this.lastRoleUpdatedAt && record.role_updated_at !== this.lastRoleUpdatedAt) {
+      this.lastRoleUpdatedAt = record.role_updated_at;
+      this.roomRole = record.role;
+      return record.role;
+    }
+    if (!this.lastRoleUpdatedAt) {
+      this.lastRoleUpdatedAt = record.role_updated_at;
+      this.roomRole = record.role;
+    }
+    return null;
   }
 
   // --- Categories & Transactions Handlers ---
