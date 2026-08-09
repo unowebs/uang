@@ -1148,6 +1148,53 @@ class Store {
     return { tsvText, htmlTable, count: filteredTxs.length };
   }
 
+  exportToExcel(filteredTxs) {
+    const { htmlTable } = this.generateSpreadsheetData(filteredTxs);
+    const excelTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Rekap Keuangan</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; font-size: 12px; }
+          th { background-color: #0f9d58; color: white; border: 1px solid #cccccc; padding: 8px; text-align: left; }
+          td { border: 1px solid #cccccc; padding: 8px; }
+          .income-row { background-color: #e6f4ea; }
+          .expense-row { background-color: #fce8e6; }
+          .summary-row { background-color: #e8f0fe; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <h2>📊 Rekap Keuangan FinTrack ID</h2>
+        <p>Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
+        ${htmlTable}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\uFEFF' + excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `FinTrack_Rekap_Keuangan_${new Date().toISOString().slice(0, 10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   exportToCSV(filteredTxs) {
     const { tsvText } = this.generateSpreadsheetData(filteredTxs);
     const blob = new Blob([tsvText], { type: 'text/tab-separated-values;charset=utf-8;' });

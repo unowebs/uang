@@ -1304,39 +1304,31 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     toast(`Spreadsheet siap (${txs.length} transaksi)`, '📊');
   });
 
+  // ── Unduh File Excel (.xls) – Pre-filled Spreadsheet ──
+  document.getElementById('btnDownloadExcel')?.addEventListener('click', () => {
+    const from = document.getElementById('recapFrom').value;
+    const to   = document.getElementById('recapTo').value;
+    const timeframe = (from || to) ? 'custom' : state.timeframe;
+    const txs  = store.getFilteredTransactions(timeframe, from, to, 'all', 'all', '');
+    if (!txs.length) { alert('Tidak ada data transaksi untuk diekspor.'); return; }
+
+    store.exportToExcel(txs);
+    toast('📥 File Excel (.xls) berhasil diunduh! Saat dibuka isinya SUDAH LENGKAP TERISI.', '✅', '', 5000);
+  });
+
   // ── Buka Google Sheets – Auto Copy TSV + Buka tab Google Sheets ──
   document.getElementById('btnOpenGoogleSheets')?.addEventListener('click', () => {
     if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet.', '⚠️'); return; }
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(activeSpreadsheetTsv).then(() => {
-        toast('📋 Data disalin ke clipboard! Tekan Ctrl + V pada sel A1 di Google Sheets.', '🚀', '', 6000);
+        toast('📋 Data disalin! Di tab Google Sheets baru, tekan Ctrl + V pada sel A1.', '🚀', '', 7000);
       }).catch(() => {
         toast('Membuka Google Sheets…', '🚀');
       });
     }
 
     window.open('https://docs.google.com/spreadsheets/create', '_blank');
-  });
-
-  // ── Unduh File CSV / Excel ──
-  document.getElementById('btnDownloadCsv')?.addEventListener('click', () => {
-    if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet.', '⚠️'); return; }
-
-    // Convert TSV to CSV format
-    const csvContent = activeSpreadsheetTsv.split('\n').map(row =>
-      row.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
-    ).join('\n');
-
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `FinTrack_Rekap_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    toast('📥 File CSV berhasil diunduh!', '✅');
   });
 
   // ── Salin TSV ──
