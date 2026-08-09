@@ -1316,7 +1316,7 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
       });
     }
 
-    window.open('https://docs.google.com/spreadsheets/u/0/create', '_blank');
+    window.open('https://docs.google.com/spreadsheets/create', '_blank');
   });
 
   // ── Unduh File CSV / Excel ──
