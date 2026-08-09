@@ -692,17 +692,23 @@
     <div class="modal-body" style="padding:20px; overflow-y:auto;">
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center;">
         <button id="btnOpenGoogleSheets" class="btn btn-primary btn-sm" style="background:#0f9d58; border-color:#0f9d58;">
-          <i data-lucide="external-link"></i> Buka di Google Sheets (sheets.new)
+          <i data-lucide="external-link"></i> Buka di Google Sheets & Auto Copy
+        </button>
+        <button id="btnDownloadCsv" class="btn btn-ghost btn-sm" style="border:1px solid #0f9d58; color:#0f9d58;">
+          <i data-lucide="download"></i> Unduh File CSV / Excel
         </button>
         <button id="btnCopySheetFormat" class="btn btn-ghost btn-sm">
-          <i data-lucide="copy"></i> Salin Format Spreadsheet (TSV)
+          <i data-lucide="copy"></i> Salin Format (TSV)
         </button>
         <button id="btnPrintSpreadsheet" class="btn btn-ghost btn-sm">
           <i data-lucide="printer"></i> Cetak / Simpan
         </button>
       </div>
-      <div style="font-size:12px; color:var(--text-3); margin-bottom:14px;">
-        💡 <b>Tips:</b> Klik <b>"Buka di Google Sheets"</b> untuk langsung membuka lembar kerja baru di Google Sheets. Data tabel di bawah sudah otomatis disalin ke clipboard, kamu tinggal menekan tombol <b>Ctrl + V</b> (Paste) di Google Sheets!
+      <div style="font-size:12px; color:var(--text-3); margin-bottom:14px; background:var(--bg-input); padding:10px 14px; border-radius:8px; border:1px solid var(--border);">
+        💡 <b>Cara Pakai di Google Sheets:</b><br>
+        1. Klik <b>"Buka di Google Sheets & Auto Copy"</b> (data otomatis disalin ke clipboard).<br>
+        2. Pada tab Google Sheets baru yang terbuka, klik sel <b>A1</b> lalu tekan <b>Ctrl + V</b> (atau <b>Cmd + V</b> di Mac).<br>
+        3. Atau klik <b>"Unduh File CSV / Excel"</b> lalu buka file tersebut melalui menu <i>File &rarr; Impor</i> di Google Sheets.
       </div>
       <div class="sheet-modal-container" id="sheetModalContainer" style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px; overflow-x:auto;">
         <!-- Formatted Web Spreadsheet Table will be rendered here -->

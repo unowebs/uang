@@ -1304,16 +1304,30 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     toast(`Spreadsheet siap (${txs.length} transaksi)`, '📊');
   });
 
-  // ── Buka Google Sheets – Download CSV + open sheets.google.com ──
+  // ── Buka Google Sheets – Auto Copy TSV + Buka tab Google Sheets ──
   document.getElementById('btnOpenGoogleSheets')?.addEventListener('click', () => {
-    if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet. Klik tombol Spreadsheet terlebih dahulu.', '⚠️'); return; }
+    if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet.', '⚠️'); return; }
 
-    // Convert TSV to CSV for broader compatibility
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(activeSpreadsheetTsv).then(() => {
+        toast('📋 Data disalin ke clipboard! Tekan Ctrl + V pada sel A1 di Google Sheets.', '🚀', '', 6000);
+      }).catch(() => {
+        toast('Membuka Google Sheets…', '🚀');
+      });
+    }
+
+    window.open('https://docs.google.com/spreadsheets/u/0/create', '_blank');
+  });
+
+  // ── Unduh File CSV / Excel ──
+  document.getElementById('btnDownloadCsv')?.addEventListener('click', () => {
+    if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet.', '⚠️'); return; }
+
+    // Convert TSV to CSV format
     const csvContent = activeSpreadsheetTsv.split('\n').map(row =>
       row.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
     ).join('\n');
 
-    // Create downloadable CSV file
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -1322,12 +1336,7 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     a.click();
     URL.revokeObjectURL(url);
 
-    // Open Google Sheets import page
-    setTimeout(() => {
-      window.open('https://docs.google.com/spreadsheets/u/0/create', '_blank');
-    }, 500);
-
-    toast('📅 File CSV diunduh! Di Google Sheets: File → Impor → Upload file CSV tersebut.', '🚀', '', 6000);
+    toast('📥 File CSV berhasil diunduh!', '✅');
   });
 
   // ── Salin TSV ──
