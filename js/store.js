@@ -120,11 +120,11 @@ async function saveUserToCloud(user) {
         'Prefer': 'resolution=merge-duplicates,return=representation'
       },
       body: JSON.stringify({
-        email:     user.email,
+        email: user.email,
         full_name: user.name,
-        password:  user.password,
-        pin:       user.pin,
-        avatar:    user.avatar || null
+        password: user.password,
+        pin: user.pin,
+        avatar: user.avatar || null
       })
     });
     if (!res.ok) {
@@ -519,9 +519,9 @@ class Store {
 
   async registerUser(name, email, password, pin = '') {
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPass  = password.trim();
-    const cleanName  = name.trim();
-    const cleanPin   = pin.trim();
+    const cleanPass = password.trim();
+    const cleanName = name.trim();
+    const cleanPin = pin.trim();
 
     if (!cleanName || !cleanEmail || !cleanPass) {
       throw new Error('Semua kolom wajib diisi.');
@@ -563,7 +563,7 @@ class Store {
 
   async loginUser(email, password) {
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPass  = password.trim();
+    const cleanPass = password.trim();
 
     // Always sync from cloud first
     await this.syncAllFromCloud();
@@ -586,7 +586,7 @@ class Store {
 
   async loginWithPin(email, pin) {
     const cleanEmail = email ? email.trim().toLowerCase() : '';
-    const cleanPin   = pin ? pin.trim() : '';
+    const cleanPin = pin ? pin.trim() : '';
 
     if (!cleanEmail || !cleanPin) {
       throw new Error('Email dan PIN wajib diisi.');
@@ -616,9 +616,9 @@ class Store {
     if (!this.currentUser) throw new Error('Pengguna belum login.');
 
     const cleanEmail = email ? email.trim().toLowerCase() : this.currentUser.email;
-    const cleanName  = name ? name.trim() : this.currentUser.name;
-    const cleanPass  = password ? password.trim() : this.currentUser.password;
-    const cleanPin   = pin ? pin.trim() : (this.currentUser.pin || '123456');
+    const cleanName = name ? name.trim() : this.currentUser.name;
+    const cleanPass = password ? password.trim() : this.currentUser.password;
+    const cleanPin = pin ? pin.trim() : (this.currentUser.pin || '123456');
 
     if (!cleanName || !cleanEmail || !cleanPass) {
       throw new Error('Nama, Email, dan Password tidak boleh kosong.');
@@ -671,7 +671,7 @@ class Store {
     return localStorage.getItem(STORAGE_KEYS.ACTIVE_ROOM) || null;
   }
 
-  async createRoom(roomCode, roomName) {
+  async createRoom(roomCode, roomName, importExistingData = false) {
     const cleanCode = roomCode.toUpperCase().trim();
     await this.syncRoomsFromCloud();
 
@@ -696,8 +696,26 @@ class Store {
     this.activeRoom = cleanCode;
     this.roomRole = 'host';
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ROOM, cleanCode);
+
+    // If user wants to import their existing personal transactions into this room
+    if (importExistingData) {
+      const myEmail = hostEmail;
+      const personalTxs = this.transactions.filter(
+        t => t.userEmail === myEmail && !t.roomCode
+      );
+      for (const tx of personalTxs) {
+        tx.roomCode = cleanCode;
+        await saveTransactionToCloud(tx);
+      }
+      if (personalTxs.length > 0) {
+        this.saveTransactions();
+      }
+      return { ...newRoom, importedCount: personalTxs.length };
+    }
+
     return newRoom;
   }
+
 
   async joinRoom(roomCode) {
     const cleanCode = roomCode.toUpperCase().trim();
@@ -804,7 +822,7 @@ class Store {
     try {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        const cleaned = parsed.filter(t => t.userEmail !== 'demo@fintrack.id' && !['tx-1','tx-2','tx-3','tx-4','tx-5'].includes(t.id));
+        const cleaned = parsed.filter(t => t.userEmail !== 'demo@fintrack.id' && !['tx-1', 'tx-2', 'tx-3', 'tx-4', 'tx-5'].includes(t.id));
         if (cleaned.length !== parsed.length) {
           localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(cleaned));
         }
@@ -957,7 +975,7 @@ class Store {
       } else if (timeframe === 'custom' && customStart) {
         const startDate = new Date(customStart);
         startDate.setHours(0, 0, 0, 0);
-        
+
         const endDate = customEnd ? new Date(customEnd) : new Date();
         endDate.setHours(23, 59, 59, 999);
 

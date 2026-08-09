@@ -285,17 +285,24 @@ function updateAuthUI() {
 // ROOM UI
 // ─────────────────────────────────────────
 function updateRoomUI() {
-  const badge = document.getElementById('roomBadge');
-  const leave = document.getElementById('btnLeaveRoom');
-  const btnMem = document.getElementById('btnRoomMembers');
+  const badge      = document.getElementById('roomBadge');
+  const leave      = document.getElementById('btnLeaveRoom');
+  const btnMem     = document.getElementById('btnRoomMembers');
+  const btnCreate  = document.getElementById('btnCreateRoom');
+  const btnJoin    = document.getElementById('btnJoinRoom');
   if (store.activeRoom) {
     if (badge) badge.textContent = `Room: ${store.activeRoom}`;
-    if (leave) leave.classList.remove('hidden');
-    if (btnMem) btnMem.classList.remove('hidden');
+    if (leave)     leave.classList.remove('hidden');
+    if (btnMem)    btnMem.classList.remove('hidden');
+    // Hide create/join when already in a room — must leave first
+    if (btnCreate) btnCreate.classList.add('hidden');
+    if (btnJoin)   btnJoin.classList.add('hidden');
   } else {
     if (badge) badge.textContent = 'Pribadi';
-    if (leave) leave.classList.add('hidden');
-    if (btnMem) btnMem.classList.add('hidden');
+    if (leave)     leave.classList.add('hidden');
+    if (btnMem)    btnMem.classList.add('hidden');
+    if (btnCreate) btnCreate.classList.remove('hidden');
+    if (btnJoin)   btnJoin.classList.remove('hidden');
   }
 }
 
@@ -311,19 +318,29 @@ const ROLE_LABELS = {
 
 function applyRolePermissions(role) {
   if (!store.activeRoom) {
-    // No room → show all buttons
-    document.getElementById('btnNewTx')?.classList.remove('hidden');
-    document.querySelectorAll('.btn-edit-tx').forEach(b => b.classList.remove('hidden'));
-    document.querySelectorAll('.btn-del-tx').forEach(b => b.classList.remove('hidden'));
+    // No room → restore all buttons
+    const btnNew = document.getElementById('btnNewTx');
+    if (btnNew) btnNew.style.display = '';
+    document.getElementById('btnNewCat')?.style.setProperty('display', '');
+    document.getElementById('btnAddCatQ')?.style.setProperty('display', '');
+    document.querySelectorAll('.btn-edit-tx').forEach(b => b.style.display = '');
+    document.querySelectorAll('.btn-del-tx').forEach(b => b.style.display = '');
     return;
   }
   const r = role || store.roomRole || 'viewer';
   const canAdd    = ['host', 'member'].includes(r);
   const canEdit   = ['host', 'member', 'editor'].includes(r);
   const canDelete = ['host', 'member'].includes(r);
+  // Viewer cannot use any input form including categories
+  const canManageCat = canAdd;
 
   const btnNew = document.getElementById('btnNewTx');
   if (btnNew) btnNew.style.display = canAdd ? '' : 'none';
+
+  const btnNewCat  = document.getElementById('btnNewCat');
+  const btnAddCatQ = document.getElementById('btnAddCatQ');
+  if (btnNewCat)  btnNewCat.style.display  = canManageCat ? '' : 'none';
+  if (btnAddCatQ) btnAddCatQ.style.display = canManageCat ? '' : 'none';
 
   document.querySelectorAll('.btn-edit-tx').forEach(b => {
     b.style.display = canEdit ? '' : 'none';
@@ -827,8 +844,23 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   // ── Tx form submit (Tambah & Edit) ──
   document.getElementById('txForm')?.addEventListener('submit', async e => {
     e.preventDefault();
-    const btn = e.currentTarget.querySelector('[type="submit"]');
+    const btn    = e.currentTarget.querySelector('[type="submit"]');
     const editId = document.getElementById('editTxId').value;
+
+    // Guard: block submission for viewer role
+    if (store.activeRoom) {
+      const r = store.roomRole || 'viewer';
+      const canAdd  = ['host', 'member'].includes(r);
+      const canEdit = ['host', 'member', 'editor'].includes(r);
+      if (editId && !canEdit) {
+        alert('❌ Akses kamu di room ini tidak mengizinkan mengubah transaksi.');
+        return;
+      }
+      if (!editId && !canAdd) {
+        alert('❌ Akses kamu di room ini tidak mengizinkan menambah transaksi.');
+        return;
+      }
+    }
     const type     = document.querySelector('input[name="txType"]:checked').value;
     const title    = document.getElementById('txTitle').value.trim();
     const formattedAmount = document.getElementById('txAmount').value;
@@ -896,6 +928,14 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
   // ── Category form submit ──
   document.getElementById('catForm')?.addEventListener('submit', e => {
     e.preventDefault();
+    // Guard: block category creation for viewer/editor in a room
+    if (store.activeRoom) {
+      const r = store.roomRole || 'viewer';
+      if (!['host', 'member'].includes(r)) {
+        alert('❌ Akses kamu di room ini tidak mengizinkan membuat atau mengelola kategori.');
+        return;
+      }
+    }
     const name   = document.getElementById('catName').value.trim();
     const type   = document.getElementById('catType').value;
     const budget = parseFloat(document.getElementById('catBudget').value) || 0;
@@ -924,13 +964,19 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     const btn  = e.currentTarget.querySelector('[type="submit"]');
     const name = document.getElementById('roomName').value.trim();
     const code = document.getElementById('roomCode').value.trim();
-    if (btn) { btn.disabled = true; btn.textContent = 'Membuat…'; }
+    const importMode = document.querySelector('input[name="roomDataMode"]:checked')?.value || 'fresh';
+    const importExistingData = importMode === 'import';
+    if (btn) { btn.disabled = true; btn.textContent = importExistingData ? 'Mengimpor Data…' : 'Membuat…'; }
     try {
-      await store.createRoom(code, name);
+      const result = await store.createRoom(code, name, importExistingData);
       closeModal('modalCreateRoom');
       document.getElementById('createRoomForm').reset();
       refresh();
-      toast(`Room "${name}" [${code.toUpperCase()}] dibuat! 🏠`, '🏠');
+      if (importExistingData && result.importedCount > 0) {
+        toast(`Room "${name}" dibuat! ${result.importedCount} transaksi berhasil diimpor. 📦`, '🏠');
+      } else {
+        toast(`Room "${name}" [${code.toUpperCase()}] dibuat! 🏠`, '🏠');
+      }
     } catch (err) {
       alert(err.message);
     } finally {
@@ -1258,14 +1304,30 @@ function compressImage(file, maxDimension = 200, quality = 0.7) {
     toast(`Spreadsheet siap (${txs.length} transaksi)`, '📊');
   });
 
-  // ── Buka Google Sheets & Auto Paste ──
+  // ── Buka Google Sheets – Download CSV + open sheets.google.com ──
   document.getElementById('btnOpenGoogleSheets')?.addEventListener('click', () => {
-    if (activeSpreadsheetTsv && navigator.clipboard) {
-      navigator.clipboard.writeText(activeSpreadsheetTsv).then(() => {
-        toast('📋 Data disalin ke clipboard! Membuka Google Sheets…', '🚀');
-      }).catch(() => {});
-    }
-    window.open('https://sheets.new', '_blank');
+    if (!activeSpreadsheetTsv) { toast('Tidak ada data spreadsheet. Klik tombol Spreadsheet terlebih dahulu.', '⚠️'); return; }
+
+    // Convert TSV to CSV for broader compatibility
+    const csvContent = activeSpreadsheetTsv.split('\n').map(row =>
+      row.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+
+    // Create downloadable CSV file
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `FinTrack_Rekap_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Open Google Sheets import page
+    setTimeout(() => {
+      window.open('https://docs.google.com/spreadsheets/u/0/create', '_blank');
+    }, 500);
+
+    toast('📅 File CSV diunduh! Di Google Sheets: File → Impor → Upload file CSV tersebut.', '🚀', '', 6000);
   });
 
   // ── Salin TSV ──

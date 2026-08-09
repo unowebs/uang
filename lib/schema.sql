@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS public.room_members CASCADE;
 DROP TABLE IF EXISTS public.rooms CASCADE;
 DROP TABLE IF EXISTS public.categories CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
-
+P
 -- 2. Profiles Table
 CREATE TABLE public.profiles (
   id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
